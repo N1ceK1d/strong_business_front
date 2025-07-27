@@ -2,7 +2,7 @@
   <v-app>
     <v-main>
       <AppHeader/>
-      <Tests/>
+      <Profile/>
     </v-main>
 
     <AppFooter />
@@ -10,5 +10,8 @@
 </template>
 
 <script setup>
+import Authorization from './components/Authorization.vue';
+import Profile from './components/Profile.vue';
+
   //
 </script>
