@@ -28,32 +28,37 @@ const router = createRouter({
   history: createWebHistory(),
   routes
 })
-
-router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore()
+router.beforeEach(async (to, from, next) => {
+  const authStore = useAuthStore();
   
-  // Инициализируем состояние при первом переходе
-  if (!authStore.initialized) {
-    authStore.initialize()
-    authStore.initialized = true
-  }
+  try {
+    // Инициализация только если не выполнена
+    if (!authStore.initialized) {
+      await authStore.initialize();
+    }
 
-  // Перенаправление для корневого пути
-  if (to.path === '/') {
-    return next(authStore.isAuthenticated ? '/profile' : '/authorization')
-  }
+    // Для корневого пути
+    if (to.path === '/') {
+      return next(authStore.isAuthenticated ? '/profile' : '/authorization');
+    }
 
-  // Проверка защищенных маршрутов
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    return next('/authorization')
-  }
+    // Разрешить переход если:
+    // - маршрут не требует авторизации
+    // - пользователь авторизован
+    if (!to.meta.requiresAuth || authStore.isAuthenticated) {
+      return next();
+    }
 
-  // Проверка для уже авторизованных пользователей
-  if ((to.path === '/authorization' || to.path === '/login') && authStore.isAuthenticated) {
-    return next('/profile')
-  }
+    // Перенаправление для неавторизованных
+    if (!authStore.isAuthenticated && to.meta.requiresAuth) {
+      return next('/authorization');
+    }
 
-  next()
-})
+    next();
+  } catch (error) {
+    console.error('Navigation guard error:', error);
+    next('/authorization'); // Фолбэк
+  }
+});
 
 export default router

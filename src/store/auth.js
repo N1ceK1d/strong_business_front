@@ -16,10 +16,18 @@ export const useAuthStore = defineStore('auth', {
       this.user = null
       localStorage.removeItem('auth')
     },
+    setUser({ commit }, userData) {
+      commit('SET_USER', userData);
+      this.isAuthenticated = true;
+      console.log('User set in store:', userData); // Для отладки
+    },
     initialize() {
-      if (localStorage.getItem('auth')) {
-        this.isAuthenticated = true
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        this.isAuthenticated = true;
+        console.log('Initialized with token'); // Для отладки
       }
+      this.initialized = true;
     }
   }
 })

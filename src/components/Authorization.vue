@@ -5,13 +5,21 @@
         <h2 class="text-h4">{{ isLoginMode ? 'Вход' : 'Регистрация' }}</h2>
       </v-card-title>
 
-      <v-form @submit.prevent="submitForm" v-model="formValid">
+      <v-alert
+        v-if="errorMessage"
+        type="error"
+        class="mb-4"
+      >
+        {{ errorMessage }}
+      </v-alert>
+
+      <v-form @submit.prevent="submitForm" v-model="formValid" ref="form">
         <!-- Режим регистрации - дополнительные поля -->
         <template v-if="!isLoginMode">
           <v-row>
             <v-col cols="12" md="4">
               <v-text-field
-                v-model="form.lastName"
+                v-model="form.last_name"
                 label="Фамилия"
                 :rules="nameRules"
                 variant="outlined"
@@ -22,7 +30,7 @@
             
             <v-col cols="12" md="4">
               <v-text-field
-                v-model="form.firstName"
+                v-model="form.first_name"
                 label="Имя"
                 :rules="nameRules"
                 variant="outlined"
@@ -32,7 +40,7 @@
 
             <v-col cols="12" md="4">
               <v-text-field
-                v-model="form.middleName"
+                v-model="form.middle_name"
                 label="Отчество"
                 variant="outlined"
               ></v-text-field>
@@ -115,81 +123,210 @@
   </v-container>
 </template>
 
-<script setup>
-import { ref } from 'vue';
-const formValid = ref(false);
-// Состояние формы
-const form = ref({
-  firstName: '',
-  lastName: '',
-  middleName: '',
-  company: '',
-  email: '',
-  password: '',
-  confirmPassword: ''
-});
+<script>
+import api from '@/services/api'
 
-// Правила валидации
-const nameRules = [
-  v => !!v || 'Обязательное поле',
-  v => (v && v.length >= 2) || 'Минимум 2 символа',
-  v => /^[а-яА-ЯёЁa-zA-Z-]+$/.test(v) || 'Только буквы и дефисы'
-];
-
-const companyRules = [
-  v => !!v || 'Введите название компании',
-  v => (v && v.length >= 3) || 'Минимум 3 символа'
-];
-
-const emailRules = [
-  v => !!v || 'Email обязателен',
-  v => /.+@.+\..+/.test(v) || 'Некорректный email'
-];
-
-const passwordRules = [
-  v => !!v || 'Пароль обязателен',
-  v => (v && v.length >= 8) || 'Минимум 8 символов',
-  v => /[A-Z]/.test(v) || 'Должна быть хотя бы 1 заглавная буква',
-  v => /\d/.test(v) || 'Должна быть хотя бы 1 цифра'
-];
-
-const confirmPasswordRules = [
-  v => !!v || 'Подтвердите пароль',
-  v => v === form.value.password || 'Пароли не совпадают'
-];
-
-// UI состояния
-const isLoginMode = ref(false); // По умолчанию показываем регистрацию
-const showPassword = ref(false);
-const loading = ref(false);
-
-const toggleMode = () => {
-  isLoginMode.value = !isLoginMode.value;
-  form.value = { 
-    firstName: '',
-    lastName: '',
-    middleName: '',
-    company: '',
-    email: '',
-    password: '',
-    confirmPassword: '' 
-  };
-};
-
-const submitForm = async () => {
-  loading.value = true;
-  try {
-    if (isLoginMode.value) {
-      console.log('Вход:', { email: form.value.email, password: form.value.password });
-      alert('Вход выполнен!');
-    } else {
-      const userData = { ...form.value };
-      delete userData.confirmPassword; // Удаляем подтверждение пароля перед отправкой
-      console.log('Регистрация:', userData);
-      alert('Регистрация успешна!');
+export default {
+  data() {
+    return {
+      formValid: false,
+      form: {
+        first_name: '',
+        last_name: '',
+        middle_name: '',
+        company: '',
+        email: '',
+        password: '',
+        confirmPassword: ''
+      },
+      isLoginMode: true, // По умолчанию показываем вход
+      showPassword: false,
+      loading: false,
+      errorMessage: ''
     }
+  },
+  computed: {
+    nameRules() {
+      return [
+        v => !!v || 'Обязательное поле',
+        v => (v && v.length >= 2) || 'Минимум 2 символа',
+        v => /^[а-яА-ЯёЁa-zA-Z-]+$/.test(v) || 'Только буквы и дефисы'
+      ]
+    },
+    companyRules() {
+      return [
+        v => !!v || 'Введите название компании',
+        v => (v && v.length >= 3) || 'Минимум 3 символа'
+      ]
+    },
+    emailRules() {
+      return [
+        v => !!v || 'Email обязателен',
+        v => /.+@.+\..+/.test(v) || 'Некорректный email'
+      ]
+    },
+    passwordRules() {
+      return [
+        v => !!v || 'Пароль обязателен',
+        v => (v && v.length >= 8) || 'Минимум 8 символов',
+        v => /[A-Z]/.test(v) || 'Должна быть хотя бы 1 заглавная буква',
+        v => /\d/.test(v) || 'Должна быть хотя бы 1 цифра'
+      ]
+    },
+    confirmPasswordRules() {
+      return [
+        v => !!v || 'Подтвердите пароль',
+        v => v === this.form.password || 'Пароли не совпадают'
+      ]
+    }
+  },
+  methods: {
+    toggleMode() {
+      this.isLoginMode = !this.isLoginMode
+      this.errorMessage = ''
+      this.$refs.form.reset()
+    },
+    async submitForm() {
+      if (!this.formValid) return
+      
+      this.loading = true
+      this.errorMessage = ''
+
+      try {
+        if (this.isLoginMode) {
+          await this.handleLogin()
+        } else {
+          await this.handleRegistration()
+        }
+      } catch (error) {
+        this.handleError(error)
+      } finally {
+        this.loading = false
+      }
+    },
+    async handleLogin() {
+      try {
+        const response = await api.post('/login', {
+          email: this.form.email,
+          password: this.form.password // Отправляем в открытом виде (HTTPS)
+        })
+
+        // Сохраняем токен
+        localStorage.setItem('authToken', response.data.token)
+        
+        // // Сохраняем пользователя в хранилище (если используете Vuex/Pinia)
+        // this.$store.commit('setUser', response.data.user)
+        
+        // Перенаправляем на защищенную страницу
+        // this.$router.push('/profile')
+
+        // 4. Обновление состояния хранилища (если используется)
+    if (this.$store?.commit) {
+      this.$store.commit('setUser', response.data.user);
+    }
+
+    // 5. Принудительное перенаправление (3 варианта)
+    try {
+      // Вариант 1: Стандартный переход
+      await this.$router.push('/profile');
+      console.log('Перенаправление через $router.push');
+    } catch (routerError) {
+      console.warn('Ошибка роутера:', routerError);
+      
+      // Вариант 2: Через location.href
+      window.location.href = '/profile';
+      console.log('Перенаправление через window.location');
+      
+      // ИЛИ Вариант 3: Через reload
+      // window.location.reload();
+    }
+        
+      } catch (error) {
+        throw new Error(error.response?.data?.error || 'Ошибка входа')
+      }
+    },
+    async handleRegistration() {
+  try {
+    this.loading = true;
+    this.errorMessage = '';
+
+    const userData = {
+      first_name: this.form.first_name,
+      last_name: this.form.last_name,
+      middle_name: this.form.middle_name,
+      email: this.form.email,
+      password: this.form.password,
+      company: this.form.company
+    };
+
+    // 1. Отправка данных регистрации
+    const response = await api.post('/register', userData);
+    
+    // 2. Проверка ответа сервера
+    if (!response.data?.token) {
+      throw new Error('Не получили токен от сервера');
+    }
+
+    console.log('Регистрация успешна:', response.data);
+
+    // 3. Сохранение данных
+    localStorage.setItem('authToken', response.data.token);
+    
+    // 4. Обновление состояния хранилища (если используется)
+    if (this.$store?.commit) {
+      this.$store.commit('setUser', response.data.user);
+    }
+
+    // 5. Принудительное перенаправление (3 варианта)
+    try {
+      // Вариант 1: Стандартный переход
+      await this.$router.push('/profile');
+      console.log('Перенаправление через $router.push');
+    } catch (routerError) {
+      console.warn('Ошибка роутера:', routerError);
+      
+      // Вариант 2: Через location.href
+      window.location.href = '/profile';
+      console.log('Перенаправление через window.location');
+      
+      // ИЛИ Вариант 3: Через reload
+      // window.location.reload();
+    }
+
+  } catch (error) {
+    console.error('Ошибка регистрации:', {
+      error: error.response?.data || error.message,
+      stack: error.stack
+    });
+    
+    this.errorMessage = error.response?.data?.message || 
+                      'Ошибка при регистрации';
   } finally {
-    loading.value = false;
+    this.loading = false;
   }
-};
+},
+    handleError(error) {
+      console.error('Auth error:', error)
+      this.errorMessage = error.message || 'Произошла ошибка'
+      
+      // Автоматически очищаем ошибку через 5 секунд
+      setTimeout(() => {
+        this.errorMessage = ''
+      }, 5000)
+    }
+  }
+}
 </script>
+
+<style scoped>
+.v-card {
+  max-width: 600px;
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .v-card {
+    padding: 16px;
+  }
+}
+</style>
