@@ -1,17 +1,13 @@
 <template>
   <v-app>
+    <AppHeader/>
     <v-main>
-      <AppHeader/>
-      <Profile/>
+      <router-view></router-view>
     </v-main>
-
     <AppFooter />
   </v-app>
 </template>
 
 <script setup>
-import Authorization from './components/Authorization.vue';
-import Profile from './components/Profile.vue';
-
   //
 </script>

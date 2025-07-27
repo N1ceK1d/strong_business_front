@@ -5,9 +5,15 @@
         <v-card class="mb-4">
           <v-card-title class="text-center">Профиль</v-card-title>
           <v-card-text>
-            <v-avatar size="120" class="mx-auto d-block mb-4">
-              <v-img :src="user.avatar || 'https://cdn.vuetifyjs.com/images/john.jpg'"></v-img>
-            </v-avatar>
+            <div class="text-center mb-4">
+              <v-icon
+                size="100"
+                color="primary"
+                class="profile-icon"
+              >
+                mdi-account-circle
+              </v-icon>
+            </div>
             
             <v-list lines="two">
               <v-list-item
@@ -39,24 +45,21 @@
       </v-col>
 
       <v-col cols="12" md="8">
-        <!-- Вкладки -->
         <v-tabs v-model="tab" grow>
           <v-tab value="tests">Мои тесты</v-tab>
           <v-tab value="settings">Настройки</v-tab>
         </v-tabs>
 
         <v-window v-model="tab">
-          <!-- Вкладка с тестами -->
           <v-window-item value="tests">
             <v-card class="mt-4">
-              <v-card-title>История тестирований</v-card-title>
+              <v-card-title>Тесты</v-card-title>
               <v-card-text>
                 <v-list>
                   <v-list-item
-                    v-for="test in user.tests"
+                    v-for="test in tests"
                     :key="test.id"
                     :title="test.name"
-                    :subtitle="`Пройден: ${test.date} | Результат: ${test.score}%`"
                     @click="goToTestResults(test.id)"
                     link
                   >
@@ -75,7 +78,6 @@
             </v-card>
           </v-window-item>
 
-          <!-- Вкладка с настройками -->
           <v-window-item value="settings">
             <v-card class="mt-4">
               <v-card-title>Настройки профиля</v-card-title>
@@ -106,13 +108,6 @@
                     prepend-icon="mdi-office-building"
                   ></v-text-field>
                   
-                  <v-file-input
-                    label="Аватар"
-                    prepend-icon="mdi-camera"
-                    @change="uploadAvatar"
-                    accept="image/*"
-                  ></v-file-input>
-                  
                   <v-btn
                     type="submit"
                     color="primary"
@@ -131,59 +126,58 @@
   </v-container>
 </template>
 
-<script setup>
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+<script>
+import api from '@/services/api';
 
-const router = useRouter()
-const tab = ref('tests')
-
-// Данные пользователя
-const user = reactive({
-  id: 1,
-  fullName: 'Иванов Иван Иванович',
-  email: 'ivanov@example.com',
-  phone: '+7 (987) 654-32-10',
-  company: 'Strong Business',
-  role: 'Пользователь',
-  avatar: '',
-  tests: [
-    { id: 1, name: 'Тест на стрессоустойчивость', date: '12.05.2023', score: 85 },
-    { id: 2, name: 'Оценка лидерских качеств', date: '28.05.2023', score: 72 },
-    { id: 3, name: 'Тест на профориентацию', date: '15.06.2023', score: 91 }
-  ]
-})
-
-// Редактируемая копия
-const editUser = reactive({ ...user })
-
-// Переход к результатам теста
-const goToTestResults = (testId) => {
-  router.push(`/test-results/${testId}`)
-}
-
-// Загрузка аватара
-const uploadAvatar = (file) => {
-  if (file) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      user.avatar = e.target.result
-      editUser.avatar = e.target.result
+export default {
+  data() {
+    return {
+      tab: 'tests',
+      loading: false,
+      tests: [],
+      errors: '',
+      user: {
+        id: 1,
+        fullName: 'Иванов Иван Иванович',
+        email: 'ivanov@example.com',
+        phone: '+7 (987) 654-32-10',
+        company: 'Strong Business',
+        role: 'Пользователь'
+      },
+      editUser: {}
     }
-    reader.readAsDataURL(file)
+  },
+  created() {
+    this.editUser = { ...this.user };
+    this.fetchTests();
+  },
+  methods: {
+    async fetchTests() {
+      try {
+        this.loading = true;
+        const response = await api.get('/get_tests');
+        this.tests = response.data;
+      } catch (error) {
+        this.errors = error;
+      } finally {
+        this.loading = false;
+      }
+    },
+    goToTestResults(testId) {
+      this.$router.push(`/test/${testId}`);
+    },
+    saveProfile() {
+      Object.assign(this.user, this.editUser);
+      alert('Изменения сохранены!');
+    }
   }
-}
-
-// Сохранение профиля
-const saveProfile = () => {
-  Object.assign(user, editUser)
-  // Здесь обычно отправка на сервер
-  alert('Изменения сохранены!')
 }
 </script>
 
 <style scoped>
-.v-avatar {
-  border: 3px solid #1976D2;
+.profile-icon {
+  background-color: #f5f5f5;
+  border-radius: 50%;
+  padding: 10px;
 }
 </style>
