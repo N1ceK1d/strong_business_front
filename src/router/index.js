@@ -2,6 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
 import Profile from '@/components/Profile.vue'
 import Authorization from '@/components/Authorization.vue'
+import Test from '@/components/Test.vue'
+import TestAccess from '@/components/TestAccess.vue'
 
 const routes = [
   {
@@ -25,6 +27,22 @@ const routes = [
     meta: { 
       requiresAuth: false,
       showHeaderFooter: false, }
+  },
+  {
+    path: '/test/:test_data',
+    name: 'Test',
+    component: Test,
+    meta: { 
+      requiresAuth: false,
+      showHeaderFooter: false, }
+  },
+  {
+    path: '/test-access/:data',
+    name: 'TestAccess',
+    component: TestAccess,
+    meta: { 
+        requiresAuth: false,
+        showHeaderFooter: false, }
   }
 ]
 

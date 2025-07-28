@@ -76,30 +76,47 @@
               </v-card-text>
             </v-card>
 <v-card>
-  <v-card-title>Генератор уникальной ссылки</v-card-title>
-  <v-card-text>
-    <v-text-field
-      v-model="generatedLink"
-      label="Ваша уникальная ссылка"
-      readonly
-      outlined
-    ></v-text-field>
-    <v-btn 
-      color="primary"
-      @click="generateLink"
-    >
-      Сгенерировать ссылку
-    </v-btn>
-    <v-btn 
-      color="secondary"
-      @click="copyLink"
-      :disabled="!generatedLink"
-      class="ml-2"
-    >
-      Копировать
-    </v-btn>
-  </v-card-text>
-</v-card>
+    <v-card-title>Генератор уникальной ссылки</v-card-title>
+    <v-card-text>
+      <v-select
+        v-model="selectedTestId"
+        :items="tests"
+        item-title="name"
+        item-value="id"
+        label="Выберите тест"
+        class="mb-4"
+      ></v-select>
+      
+      <v-checkbox
+        v-model="isAnonymous"
+        label="Анонимный доступ"
+      ></v-checkbox>
+      
+      <v-text-field
+        v-model="generatedLink"
+        label="Ваша уникальная ссылка"
+        readonly
+        outlined
+      ></v-text-field>
+      
+      <v-btn 
+        color="primary"
+        @click="generateLink"
+        :disabled="!selectedTestId"
+      >
+        Сгенерировать ссылку
+      </v-btn>
+      
+      <v-btn 
+        color="secondary"
+        @click="copyLink"
+        :disabled="!generatedLink"
+        class="ml-2"
+      >
+        Копировать
+      </v-btn>
+    </v-card-text>
+  </v-card>
           </v-window-item>
 
           <v-window-item value="settings">
@@ -152,6 +169,7 @@
 
 <script>
 import api from '@/services/api';
+import CryptoJS from 'crypto-js';
 
 export default {
   data() {
@@ -162,7 +180,10 @@ export default {
       errors: '',
       user: JSON.parse(localStorage.getItem('user_info')),
       editUser: {},
-      generatedLink: ''
+      generatedLink: '',
+      secretKey: 't1xvuNj9aGC5TJ19P4EY0uiVRlTSXK4t ',
+      selectedTestId: null,
+      isAnonymous: false,
     }
   },
   created() {
@@ -189,12 +210,25 @@ export default {
       alert('Изменения сохранены!');
     },
     generateLink() {
-      // Генерация уникального идентификатора
-      const uniqueId = Math.random().toString(36).substring(2, 15) + 
-                       Math.random().toString(36).substring(2, 15);
+      if (!this.selectedTestId) return;
       
-      // Формирование ссылки (можно изменить базовый URL)
-      this.generatedLink = `https://example.com/link/${uniqueId}`;
+      const dataToEncrypt = {
+        testId: this.selectedTestId,
+        isAnonymous: this.isAnonymous,
+        timestamp: Date.now()
+      };
+      
+      // Шифруем данные
+      const encryptedData = CryptoJS.AES.encrypt(
+        JSON.stringify(dataToEncrypt),
+        this.secretKey
+      ).toString();
+      
+      // Кодируем для URL
+      const encodedData = encodeURIComponent(encryptedData);
+      
+      // Формируем ссылку (замените на ваш домен)
+      this.generatedLink = `${window.location.origin}/test-access/${encodedData}`;
     },
     copyLink() {
       if (!this.generatedLink) return;
