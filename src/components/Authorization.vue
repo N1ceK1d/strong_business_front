@@ -55,6 +55,19 @@
             required
             class="mb-3"
           ></v-text-field>
+
+          <v-text-field
+            v-model="form.phone"
+            label="Телефон"
+            :rules="phoneRules"
+            variant="outlined"
+            prepend-inner-icon="mdi-phone"
+            required
+            class="mb-3"
+            v-mask="'+7 (###) ###-##-##'"
+            placeholder="+7 (___) ___-__-__"
+          ></v-text-field>
+
         </template>
 
         <v-text-field
@@ -119,10 +132,12 @@
 </template>
 
 <script>
+import { mask } from 'vue-the-mask'
 import api from '@/services/api'
 import { useAuthStore } from '@/store/auth'
 
 export default {
+  directives: { mask },
   data() {
     return {
       formValid: false,
@@ -133,7 +148,8 @@ export default {
         company: '',
         email: '',
         password: '',
-        confirmPassword: ''
+        confirmPassword: '',
+        phone: ''
       },
       isLoginMode: true,
       showPassword: false,
@@ -173,6 +189,12 @@ export default {
       return [
         v => !!v || 'Подтвердите пароль',
         v => v === this.form.password || 'Пароли не совпадают'
+      ]
+    },
+    phoneRules() {
+      return [
+        v => !!v || 'Телефон обязателен',
+        v => (v && v.replace(/\D/g, '').length === 11) || 'Введите полный номер телефона'
       ]
     }
   },
@@ -229,7 +251,8 @@ export default {
           middle_name: this.form.middle_name,
           email: this.form.email,
           password: this.form.password,
-          company: this.form.company
+          company: this.form.company,
+          phone: this.form.phone // Добавлен телефон в данные для отправки
         };
       
         const response = await api.post('/register', userData);
