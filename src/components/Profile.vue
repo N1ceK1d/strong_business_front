@@ -203,7 +203,7 @@ export default {
       }
     },
     goToTestResults(testId) {
-      this.$router.push(`/test/${testId}`);
+      this.$router.push(`/test_results/${testId}`);
     },
     saveProfile() {
       Object.assign(this.user, this.editUser);

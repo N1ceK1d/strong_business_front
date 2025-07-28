@@ -48,11 +48,11 @@
             >
               <v-radio
                 label="Мужской"
-                value="male"
+                value="1"
               ></v-radio>
               <v-radio
                 label="Женский"
-                value="female"
+                value="0"
               ></v-radio>
             </v-radio-group>
           </v-form>

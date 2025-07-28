@@ -1,6 +1,14 @@
 <template>
     <v-container>
         <v-form @submit.prevent="submitAnswers">
+            <v-btn 
+                color="primary" 
+                class="ml-2"
+                @click="startAutoAnswer"
+                :disabled="isAutoAnswering"
+            >
+                Автоматически ответить
+            </v-btn>
             <v-list v-for="question in questions" :key="question.id">
                 <v-card class="mb-4">
                     <v-card-title class="text-wrap">{{ question.questions }}</v-card-title>
@@ -10,7 +18,7 @@
                             <v-radio
                                 v-for="answer in question.answers"
                                 :key="answer.id"
-                                :label="`${answer.answer} (${answer.points})`"
+                                :label="`${answer.id}: ${answer.answer} (${answer.points}) `"
                                 :value="answer.points"
                             ></v-radio>
                         </v-radio-group>
@@ -26,21 +34,12 @@
                 {{ isAutoAnswering ? 'Автоответчик работает...' : 'Отправить' }}
             </v-btn>
 
-            <v-btn 
-                color="primary" 
-                class="ml-2"
-                @click="startAutoAnswer"
-                :disabled="isAutoAnswering"
-            >
-                Автоматически ответить
-            </v-btn>
+            
         </v-form>
     </v-container>
 </template>
-
 <script>
 import api from '@/services/api';
-import CryptoJS from 'crypto-js';
 
 export default {
     data() {
@@ -48,15 +47,16 @@ export default {
             questions: [],
             loading: false,
             errors: '',
-            selectedAnswers: {},
+            selectedAnswers: {}, // Теперь хранит {questionId: {answerId, points}}
             secretKey: 'my-secret-key-123',
             isAutoAnswering: false,
             autoAnswerInterval: null,
-            answerDelay: 100 // 3 секунды между ответами
+            userData: null,
+            answerDelay: 100
         }
     },
     created() {
-        this.decryptData();
+        this.parseUserData();
     },
     computed: {
         testId() {
@@ -68,7 +68,7 @@ export default {
         this.fetchQuestions();
     },
     beforeUnmount() {
-        this.stopAutoAnswer(); // Очищаем интервал при размонтировании
+        this.stopAutoAnswer();
     },
     methods: {
         async fetchQuestions() {
@@ -77,9 +77,8 @@ export default {
                 let response = await api.get(`/get_questions/${this.testId}`);
                 this.questions = response.data;
                 
-                // Инициализируем объект для хранения ответов
                 this.questions.forEach(q => {
-                    this.selectedAnswers[q.id] = null;
+                    this.selectedAnswers[q.id] = {answerId: null, points: null};
                 });
             } catch (error) {
                 console.error("Ошибка при загрузке вопросов:", error);
@@ -87,27 +86,6 @@ export default {
                 this.loading = false;
             }
         },
-        decryptData() {
-      try {
-        const encryptedData = decodeURIComponent(this.$route.params.data);
-        const bytes = CryptoJS.AES.decrypt(encryptedData, this.secretKey);
-        const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-        
-        // Проверяем timestamp (например, чтобы ссылка была действительна 7 дней)
-        const linkAge = Date.now() - decryptedData.timestamp;
-        const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 дней
-        
-        if (linkAge > maxAge) {
-          throw new Error('Ссылка устарела');
-        }
-        
-        this.testData = decryptedData;
-      } catch (error) {
-        console.error('Ошибка расшифровки:', error);
-        this.testData = null;
-      }
-    },
-
         startAutoAnswer() {
             this.isAutoAnswering = true;
             let currentQuestionIndex = 0;
@@ -116,20 +94,22 @@ export default {
                 if (currentQuestionIndex < this.questions.length) {
                     const question = this.questions[currentQuestionIndex];
                     
-                    // Выбираем случайный ответ
                     if (question.answers && question.answers.length > 0) {
                         const randomIndex = Math.floor(Math.random() * question.answers.length);
-                        this.selectedAnswers[question.id] = question.answers[randomIndex].points;
+                        const selectedAnswer = question.answers[randomIndex];
+                        this.selectedAnswers[question.id] = {
+                            answerId: selectedAnswer.id,
+                            points: selectedAnswer.points
+                        };
                     }
                     
                     currentQuestionIndex++;
                 } else {
                     this.stopAutoAnswer();
-                    this.submitAnswers(); // Автоматически отправляем когда все ответы выбраны
+                    this.submitAnswers();
                 }
             }, this.answerDelay);
         },
-
         stopAutoAnswer() {
             if (this.autoAnswerInterval) {
                 clearInterval(this.autoAnswerInterval);
@@ -137,21 +117,26 @@ export default {
             }
             this.isAutoAnswering = false;
         },
-
         async submitAnswers() {
             try {
                 this.loading = true;
                 
-                // Формируем данные для отправки
+                // Формируем данные для отправки с answer_id
                 const answersData = {
                     test_id: this.testId,
-                    answers: Object.keys(this.selectedAnswers).map(questionId => ({
-                        question_id: questionId,
-                        points: this.selectedAnswers[questionId]
-                    }))
+                    answers: Object.entries(this.selectedAnswers)
+                        .filter(([_, answer]) => answer.answerId !== null)
+                        .map(([questionId, answer]) => ({
+                            question_id: questionId, // если все же нужно сохранить и question_id
+                            answer_id: answer.answerId,
+                            points: answer.points
+                        }))
                 };
-                console.log(answersData)
-                //await api.post('/submit_answers', answersData);
+
+                answersData.user_data = this.userData;
+                
+                console.log('Отправляемые данные:', answersData);
+                await api.post('/save_answers', answersData);
                 alert('Ответы успешно отправлены!');
                 
             } catch (error) {
@@ -160,7 +145,30 @@ export default {
             } finally {
                 this.loading = false;
             }
+        },
+        parseUserData() {
+      // Если тест не анонимный и есть данные пользователя
+      if (this.$route.query.userData) {
+        try {
+          // Декодируем и парсим данные
+          this.userData = JSON.parse(decodeURIComponent(this.$route.query.userData));
+          console.log('Данные пользователя:', this.userData);
+          
+          // Пример доступа к полям:
+          console.log('ФИО:', 
+            `${this.userData.lastName} ${this.userData.firstName} ${this.userData.middleName}`);
+          
+        } catch (error) {
+          console.error('Ошибка декодирования данных пользователя:', error);
         }
+      }
+      
+      // Проверяем анонимность теста
+      this.testData = {
+        isAnonymous: this.$route.query.anonymous === 'true',
+        testId: this.$route.params.id
+      };
+    },
     }
 }
 </script>
