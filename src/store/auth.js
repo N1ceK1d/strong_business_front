@@ -2,32 +2,33 @@ import { defineStore } from 'pinia'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
+    user: null,
     isAuthenticated: false,
-    user: null
+    _initialized: false
   }),
   actions: {
-    login(userData) {
+    async initialize() {
+      if (this._initialized) return
+      
+      const token = localStorage.getItem('token')
+      if (token) {
+        try {
+          this.isAuthenticated = true
+        } catch {
+          this.logout()
+        }
+      }
+      this._initialized = true
+    },
+    setAuth(token, user) {
+      localStorage.setItem('token', token)
+      this.user = user
       this.isAuthenticated = true
-      this.user = userData
-      localStorage.setItem('auth', 'true')
     },
     logout() {
-      this.isAuthenticated = false
+      localStorage.removeItem('token')
       this.user = null
-      localStorage.removeItem('auth')
-    },
-    setUser({ commit }, userData) {
-      commit('SET_USER', userData);
-      this.isAuthenticated = true;
-      console.log('User set in store:', userData); // Для отладки
-    },
-    initialize() {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        this.isAuthenticated = true;
-        console.log('Initialized with token'); // Для отладки
-      }
-      this.initialized = true;
+      this.isAuthenticated = false
     }
   }
 })

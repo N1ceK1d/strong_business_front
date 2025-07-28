@@ -18,8 +18,7 @@
             <v-list lines="two">
               <v-list-item
                 prepend-icon="mdi-account"
-                :title="user.fullName"
-                :subtitle="'Роль: ' + user.role"
+                :title="`${this.user.last_name} ${this.user.first_name} ${this.user.middle_name}`"
               ></v-list-item>
               
               <v-list-item
@@ -76,6 +75,31 @@
                 </v-list>
               </v-card-text>
             </v-card>
+<v-card>
+  <v-card-title>Генератор уникальной ссылки</v-card-title>
+  <v-card-text>
+    <v-text-field
+      v-model="generatedLink"
+      label="Ваша уникальная ссылка"
+      readonly
+      outlined
+    ></v-text-field>
+    <v-btn 
+      color="primary"
+      @click="generateLink"
+    >
+      Сгенерировать ссылку
+    </v-btn>
+    <v-btn 
+      color="secondary"
+      @click="copyLink"
+      :disabled="!generatedLink"
+      class="ml-2"
+    >
+      Копировать
+    </v-btn>
+  </v-card-text>
+</v-card>
           </v-window-item>
 
           <v-window-item value="settings">
@@ -136,15 +160,9 @@ export default {
       loading: false,
       tests: [],
       errors: '',
-      user: {
-        id: 1,
-        fullName: 'Иванов Иван Иванович',
-        email: 'ivanov@example.com',
-        phone: '+7 (987) 654-32-10',
-        company: 'Strong Business',
-        role: 'Пользователь'
-      },
-      editUser: {}
+      user: JSON.parse(localStorage.getItem('user_info')),
+      editUser: {},
+      generatedLink: ''
     }
   },
   created() {
@@ -169,6 +187,26 @@ export default {
     saveProfile() {
       Object.assign(this.user, this.editUser);
       alert('Изменения сохранены!');
+    },
+    generateLink() {
+      // Генерация уникального идентификатора
+      const uniqueId = Math.random().toString(36).substring(2, 15) + 
+                       Math.random().toString(36).substring(2, 15);
+      
+      // Формирование ссылки (можно изменить базовый URL)
+      this.generatedLink = `https://example.com/link/${uniqueId}`;
+    },
+    copyLink() {
+      if (!this.generatedLink) return;
+      
+      // Копирование в буфер обмена
+      navigator.clipboard.writeText(this.generatedLink)
+        .then(() => {
+          alert('Ссылка скопирована в буфер обмена!');
+        })
+        .catch(err => {
+          console.error('Ошибка копирования: ', err);
+        });
     }
   }
 }

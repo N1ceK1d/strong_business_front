@@ -1,13 +1,9 @@
 <template>
   <v-app>
-    <AppHeader/>
+    <AppHeader v-if="$route.meta.showHeaderFooter !== false"/>
     <v-main>
       <router-view></router-view>
     </v-main>
-    <AppFooter />
+    <AppFooter v-if="$route.meta.showHeaderFooter !== false"/>
   </v-app>
 </template>
-
-<script setup>
-  //
-</script>
