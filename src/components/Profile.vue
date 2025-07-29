@@ -90,6 +90,7 @@
       <v-checkbox
         v-model="isAnonymous"
         label="Анонимный доступ"
+        :disabled="!selectedTestAllowsAnonymous"
       ></v-checkbox>
       
       <v-text-field
@@ -184,11 +185,19 @@ export default {
       secretKey: 't1xvuNj9aGC5TJ19P4EY0uiVRlTSXK4t ',
       selectedTestId: null,
       isAnonymous: false,
+      testsWithAnonymous: [],
     }
   },
   created() {
     this.editUser = { ...this.user };
     this.fetchTests();
+  },
+  computed: {
+    selectedTestAllowsAnonymous() {
+      if (!this.selectedTestId) return false;
+      const test = this.tests.find(t => t.id === this.selectedTestId);
+      return test ? test.allow_anonymous : false;
+    }
   },
   methods: {
     async fetchTests() {
@@ -212,23 +221,23 @@ export default {
     generateLink() {
       if (!this.selectedTestId) return;
       
+      // Если выбран анонимный доступ, но тест его не поддерживает
+      if (this.isAnonymous && !this.selectedTestAllowsAnonymous) {
+        this.isAnonymous = false; // Сбрасываем анонимность
+      }
+      
       const dataToEncrypt = {
         testId: this.selectedTestId,
-        isAnonymous: this.isAnonymous,
+        isAnonymous: this.isAnonymous && this.selectedTestAllowsAnonymous, // Двойная проверка
         timestamp: Date.now()
       };
       
-      // Шифруем данные
       const encryptedData = CryptoJS.AES.encrypt(
         JSON.stringify(dataToEncrypt),
         this.secretKey
       ).toString();
       
-      // Кодируем для URL
-      const encodedData = encodeURIComponent(encryptedData);
-      
-      // Формируем ссылку (замените на ваш домен)
-      this.generatedLink = `${window.location.origin}/test-access/${encodedData}`;
+      this.generatedLink = `${window.location.origin}/test-access/${encodeURIComponent(encryptedData)}`;
     },
     copyLink() {
       if (!this.generatedLink) return;

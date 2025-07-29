@@ -4,6 +4,7 @@ import Profile from '@/components/Profile.vue'
 import Authorization from '@/components/Authorization.vue'
 import Test from '@/components/Test.vue'
 import TestAccess from '@/components/TestAccess.vue'
+import TestOCA from '@/components/test_results/TestOCA.vue'
 
 const routes = [
   {
@@ -43,7 +44,15 @@ const routes = [
     meta: { 
         requiresAuth: false,
         showHeaderFooter: false, }
+  }, {
+    path: '/test_results',
+    name: 'TestResults',
+    component: TestOCA,
+    meta: { 
+        requiresAuth: false,
+        showHeaderFooter: true, }
   }
+  
 ]
 
 const router = createRouter({
