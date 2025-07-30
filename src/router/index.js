@@ -5,6 +5,7 @@ import Authorization from '@/components/Authorization.vue'
 import Test from '@/components/Test.vue'
 import TestAccess from '@/components/TestAccess.vue'
 import TestOCA from '@/components/test_results/TestOCA.vue'
+import ToneScale from '@/components/test_results/ToneScale.vue'
 
 const routes = [
   {
@@ -47,7 +48,7 @@ const routes = [
   }, {
     path: '/test_results',
     name: 'TestResults',
-    component: TestOCA,
+    component: ToneScale,
     meta: { 
         requiresAuth: false,
         showHeaderFooter: true, }
