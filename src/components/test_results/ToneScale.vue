@@ -1,27 +1,47 @@
 <template>
-  <v-card>
-    <v-card-title class="headline">
-      Результаты теста эмоционального состояния
-      <v-spacer></v-spacer>
-      <v-btn color="primary" @click="exportToPDF" class="mr-2">
-        <v-icon left>mdi-file-pdf</v-icon>
-        Экспорт всех
-      </v-btn>
-      <v-btn color="secondary" @click="exportSelectedToPDF" :disabled="!selected.length">
-        <v-icon left>mdi-file-pdf</v-icon>
-        Экспорт выбранных
-      </v-btn>
+  <v-card class="mx-auto" max-width="95%">
+    <v-card-title class="d-flex justify-space-between align-center">
+      <span class="text-h5">Результаты теста эмоционального состояния</span>
+      <div>
+        <v-btn 
+          color="primary" 
+          @click="exportPDF(false)" 
+          class="mr-2"
+        >
+          <v-icon left>mdi-download</v-icon>
+          Экспорт всех
+        </v-btn>
+      </div>
     </v-card-title>
 
     <v-card-text>
       <v-data-table
-        v-model="selected"
         :headers="headers"
         :items="points"
+        :items-per-page="10"
         item-key="user_id"
-        show-select
         class="elevation-1"
+        :loading="loading"
+        loading-text="Загрузка данных..."
       >
+        <template v-slot:item.actions="{ item }">
+          <v-btn
+            color="secondary"
+            small
+            @click="exportSinglePDF(item)"
+            class="mr-2"
+          >
+            <v-icon small>mdi-download</v-icon>
+          </v-btn>
+          <v-btn
+            color="error"
+            small
+            @click="deleteSingle(item)"
+          >
+            <v-icon small>mdi-delete</v-icon>
+          </v-btn>
+        </template>
+
         <template v-slot:item.level="{ item }">
           <v-chip :color="getLevelColor(item.level)" dark>
             {{ item.level }}
@@ -37,59 +57,51 @@
 </template>
 
 <script>
+import html2pdf from 'html2pdf.js';
 import api from '@/services/api';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import tone_scale_levels from './tones_descriptions';
 
 export default {
   data() {
     return {
       points: [],
-      selected: [],
+      loading: false,
       headers: [
-        { text: 'Выбрать', value: 'data-table-select', width: '5%' },
-        { text: 'ID пользователя', value: 'user_id' },
-        { text: 'Уровень', value: 'level' },
-        { text: 'Описание состояния', value: 'description', width: '60%' },
+        { 
+          text: 'Пользователь', 
+          value: 'user_fullname', 
+          width: '25%' 
+        },
+        { 
+          text: 'Уровень', 
+          value: 'level', 
+          width: '15%', 
+          align: 'center' 
+        },
+        { 
+          text: 'Описание состояния', 
+          value: 'description', 
+          width: '45%' 
+        },
+        { 
+          text: 'Действия', 
+          value: 'actions', 
+          width: '15%',
+          sortable: false,
+          align: 'center'
+        },
       ],
       levelDescriptions: {
-        '0.1-0.5': 'Глубокое депрессивное состояние, апатия, отсутствие интереса к жизни',
-        '0.6-1.0': 'Депрессия, чувство безнадежности, низкая энергия',
-        '1.1-1.4': 'Страх, тревожность, беспокойство',
-        '1.5-2.0': 'Гнев, раздражение, враждебность',
-        '2.1-2.5': 'Консерватизм, скептицизм, осторожность',
-        '2.6-3.0': 'Удовлетворенность, стабильность',
-        '3.1-3.5': 'Интерес, энтузиазм, умеренная активность',
-        '3.6-4.0': 'Радость, высокая энергия, творчество'
-      }
-    }
-  },
-  mounted() {
-    this.fetchResults();
-  },
-  methods: {
-    async fetchResults() {
-      try {
-        const response = await api.get(`/get_ToneScale/${this.companyId}`); // Используйте динамический ID
-        
-        if (response.data.success) {
-          // Преобразуем {user_id: level} в массив объектов
-          this.points = Object.entries(response.data.data).map(([user_id, level]) => ({
-            user_id,
-            level,
-            description: this.getLevelDescription(level)
-          }));
-        } else {
-          throw new Error(response.data.error || 'Unknown error');
-        }
-      } catch (error) {
-        console.error('Error fetching results:', error);
-        this.$toast.error('Ошибка загрузки результатов: ' + error.message);
-      }
-    },
-    
-    getLevelColor(level) {
-      const levelColors = {
+        '0.1-0.5': tone_scale_levels[0].description,
+        '0.6-1.0': tone_scale_levels[1].description,
+        '1.1-1.4': tone_scale_levels[2].description,
+        '1.5-2.0': tone_scale_levels[3].description,
+        '2.1-2.5': tone_scale_levels[4].description,
+        '2.6-3.0': tone_scale_levels[5].description,
+        '3.1-3.5': tone_scale_levels[6].description,
+        '3.6-4.0': tone_scale_levels[7].description
+      },
+      levelColors: {
         '0.1-0.5': 'red darken-3',
         '0.6-1.0': 'red',
         '1.1-1.4': 'orange',
@@ -98,72 +110,133 @@ export default {
         '2.6-3.0': 'light-blue',
         '3.1-3.5': 'light-green',
         '3.6-4.0': 'green'
-      };
-      return levelColors[level] || 'grey';
+      }
+    }
+  },
+  mounted() {
+    this.fetchResults();
+  },
+  methods: {
+    async fetchResults() {
+      this.loading = true;
+      try {
+        const response = await api.get('/get_ToneScale/1');
+        if (response.data.success) {
+          this.points = Object.entries(response.data.data).map(([user_id, userData]) => ({
+            user_id,
+            user_fullname: userData.fullname || 'Неизвестный пользователь',
+            level: userData.level || 'Н/Д',
+            description: this.getLevelDescription(userData.level)
+          }));
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки:', error);
+        this.$toast.error('Не удалось загрузить результаты');
+      } finally {
+        this.loading = false;
+      }
+    },
+    
+    getLevelColor(level) {
+      return this.levelColors[level] || 'grey';
     },
     
     getLevelDescription(level) {
-      return this.levelDescriptions[level] || 'Неизвестный уровень эмоционального состояния';
+      return this.levelDescriptions[level] || 'Неизвестный уровень';
     },
     
-    exportToPDF() {
-      const doc = new jsPDF();
-      doc.text('Результаты теста эмоционального состояния', 14, 16);
-      
-      const tableData = this.points.map(item => [
-        item.user_id,
-        item.level,
-        this.getLevelDescription(item.level)
-      ]);
-      
-      doc.autoTable({
-        head: [['ID пользователя', 'Уровень', 'Описание состояния']],
-        body: tableData,
-        startY: 20,
-        styles: {
-          cellPadding: 3,
-          fontSize: 9,
-          valign: 'middle'
-        },
-        columnStyles: {
-          0: { cellWidth: 30 },
-          1: { cellWidth: 30 },
-          2: { cellWidth: 130 }
+    async deleteSingle(item) {
+      try {
+        if (confirm(`Удалить результат для пользователя ${item.user_fullname}?`)) {
+          await api.post('/delete_results', { ids: [item.user_id] });
+          this.$toast.success('Результат удален');
+          this.fetchResults();
         }
-      });
-      
-      doc.save('Все_результаты_эмоционального_состояния.pdf');
+      } catch (error) {
+        console.error('Ошибка удаления:', error);
+        this.$toast.error('Ошибка при удалении результата');
+      }
     },
     
-    exportSelectedToPDF() {
-      if (this.selected.length === 0) return;
-      
-      const doc = new jsPDF();
-      doc.text('Выбранные результаты теста эмоционального состояния', 14, 16);
-      
-      const tableData = this.selected.map(item => [
-        item.user_id,
-        item.level,
-        this.getLevelDescription(item.level)
-      ]);
-      
-      doc.autoTable({
-        head: [['ID пользователя', 'Уровень', 'Описание состояния']],
-        body: tableData,
-        startY: 20,
-        styles: {
-          cellPadding: 3,
-          fontSize: 9,
-          valign: 'middle'
-        },
-        columnStyles: {
-          0: { cellWidth: 30 },
-          1: { cellWidth: 30 },
-          2: { cellWidth: 130 }
+    async exportPDF(onlySelected = false) {
+      try {
+        const items = onlySelected ? this.selected : this.points;
+        if (items.length === 0) {
+          this.$toast.warning('Нет данных для экспорта');
+          return;
         }
-      });
+        
+        await this.generatePDF(items, `Результаты_${new Date().toLocaleDateString('ru-RU')}.pdf`);
+        
+      } catch (error) {
+        console.error('Ошибка экспорта:', error);
+        this.$toast.error('Ошибка при создании PDF');
+      }
+    },
+    
+    async exportSinglePDF(item) {
+      try {
+        await this.generatePDF([item], `Результат_${item.user_fullname}_${new Date().toLocaleDateString('ru-RU')}.pdf`);
+      } catch (error) {
+        console.error('Ошибка экспорта:', error);
+        this.$toast.error('Ошибка при создании PDF');
+      }
+    },
+    
+    async generatePDF(items, filename) {
+      const element = document.createElement('div');
+      element.innerHTML = `
+        <h2 style="text-align: center; margin-bottom: 20px;">
+          ${items.length > 1 ? 'Результаты теста' : 'Результат теста'}
+        </h2>
+        <table border="1" cellspacing="0" cellpadding="5" style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr>
+              <th style="width: 30%; text-align: left;">Пользователь</th>
+              <th style="width: 15%; text-align: center;">Уровень</th>
+              <th style="width: 55%; text-align: left;">Описание состояния</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map(item => `
+              <tr>
+                <td>${item.user_fullname}</td>
+                <td style="text-align: center; background-color: ${this.getHexColor(item.level)}; color: white;">
+                  ${item.level}
+                </td>
+                <td>${item.description}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <p style="text-align: right; margin-top: 20px; font-size: 0.8em;">
+          Сформировано ${new Date().toLocaleDateString('ru-RU')}
+        </p>
+      `;
       
-      doc.save('Выбранные_результаты_эмоционального_состояния.pdf');
+      const opt = {
+        margin: 10,
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      
+      await html2pdf().from(element).set(opt).save();
+    },
+    
+    getHexColor(level) {
+      const colors = {
+        '0.1-0.5': '#c62828',
+        '0.6-1.0': '#e53935',
+        '1.1-1.4': '#fb8c00',
+        '1.5-2.0': '#f4511e',
+        '2.1-2.5': '#546e7a',
+        '2.6-3.0': '#039be5',
+        '3.1-3.5': '#7cb342',
+        '3.6-4.0': '#43a047'
+      };
+      return colors[level] || '#9e9e9e';
     }
   }
 }
@@ -171,7 +244,23 @@ export default {
 
 <style scoped>
 .v-card {
+  margin: 20px auto;
   padding: 20px;
-  margin: 20px;
+  border-radius: 8px;
+}
+
+.v-data-table {
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.v-card-title {
+  padding: 16px;
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.v-btn {
+  min-width: 36px;
 }
 </style>
