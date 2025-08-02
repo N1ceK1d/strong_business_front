@@ -17,7 +17,14 @@
           class="mb-4"
         >
           <v-card-title class="text-wrap">{{ question.questions }}</v-card-title>
-          
+          <div v-if="question.image_path">
+            <v-img
+              :src="getImageUrl(question.image_path)"
+              contain
+              max-height="300"
+              class="ma-4"
+            ></v-img>
+          </div>
           <div class="answers pl-4">
             <!-- Для одного вопроса используем сортируемые чекбоксы -->
             <div v-if="questions.length === 1">
@@ -120,6 +127,29 @@ export default {
       return route.params.test_data || testData.value.testId
     })
 
+    const getImageUrl = (imagePath) => {
+      try {
+        // Для изображений в public
+        if (imagePath.startsWith('/')) {
+          return imagePath
+        }
+        
+        // Для абсолютных URL
+        if (imagePath.startsWith('http')) {
+          return imagePath
+        }
+        
+        // Для изображений в assets (Vite)
+        return new URL(`../assets/images/${imagePath}`, import.meta.url).href
+        
+        // Для Webpack:
+        // return require(`@/assets/images/${imagePath}`)
+      } catch (e) {
+        console.error('Ошибка загрузки изображения:', e)
+        return new URL('../assets/images/placeholder.png', import.meta.url).href
+      }
+    }
+
     const isSingleQuestion = computed(() => {
       return questions.value.length === 1
     })
@@ -143,6 +173,7 @@ export default {
       try {
         loading.value = true
         const response = await api.get(`/get_questions/${testId.value}`)
+        console.log(response.data)
         questions.value = response.data || []
         
         questions.value.forEach(question => {
@@ -215,6 +246,7 @@ export default {
       autoAnswerInterval.value = null
       isAutoAnswering.value = false
     }
+    
 
     const submitAnswers = async () => {
       try {
@@ -335,9 +367,10 @@ export default {
       availableAnswers,
       addAnswer,
       removeAnswer,
-      updatePoints
+      updatePoints,
+      getImageUrl
     }
-  }
+  },
 }
 </script>
 
