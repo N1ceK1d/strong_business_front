@@ -1,80 +1,97 @@
 <template>
   <v-container>
-    <v-card>
-      <v-card-title>Аналитика продаж</v-card-title>
-      <v-card-text>
-        <v-chart
-          class="chart"
-          :option="chartOptions"
-          autoresize
+
+        <ResultsPage
+          ref="resultsPage"
+          :employee-data="employeeData"
+          :director-data="directorData"
+          :loading="loading"
+          :error="error"
+          @refresh="fetchData"
         />
-      </v-card-text>
-    </v-card>
+        <AverageMetricsPage
+          ref="averagePage"
+          :employee-data="employeeData"
+          :director-data="directorData"
+          :loading="loading"
+          :error="error"
+        />
+
+    <v-btn 
+      color="primary" 
+      fixed 
+      bottom 
+      right 
+      fab
+      @click="exportToPDF('all')"
+      :loading="exportLoading"
+    >
+      <v-icon>mdi-file-pdf</v-icon>
+    </v-btn>
   </v-container>
 </template>
 
 <script>
-import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
-import { PieChart, BarChart, LineChart } from 'echarts/charts'
-import {
-  TitleComponent,
-  TooltipComponent,
-  LegendComponent,
-  GridComponent
-} from 'echarts/components'
-import VChart from 'vue-echarts'
-
-use([
-  CanvasRenderer,
-  PieChart,
-  BarChart,
-  LineChart,
-  TitleComponent,
-  TooltipComponent,
-  LegendComponent,
-  GridComponent
-])
+import ResultsPage from './test_potintial/ResultsPage.vue'
+import AverageMetricsPage from './test_potintial/AverageMetricsPage.vue'
+import api from '@/services/api'
 
 export default {
-  components: { VChart },
+  components: {
+    ResultsPage,
+    AverageMetricsPage
+  },
   data() {
     return {
-      chartOptions: {
-        tooltip: {
-          trigger: 'axis'
-        },
-        legend: {
-          data: ['Продажи', 'Затраты']
-        },
-        xAxis: {
-          type: 'category',
-          data: ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн']
-        },
-        yAxis: {
-          type: 'value'
-        },
-        series: [
-          {
-            name: 'Продажи',
-            type: 'line',
-            smooth: true,
-            data: [120, 132, 101, 134, 190, 230]
-          },
-          {
-            name: 'Затраты',
-            type: 'bar',
-            data: [80, 95, 70, 110, 125, 140]
-          }
-        ]
+      tab: null,
+      employeeData: [],
+      directorData: [],
+      loading: false,
+      exportLoading: false,
+      error: null,
+      companyId: 1
+    }
+  },
+  created() {
+    this.fetchData()
+  },
+  methods: {
+    async fetchData() {
+      this.loading = true
+      this.error = null
+      try {
+        const [employees, directors] = await Promise.all([
+          api.get(`/get_employee/${this.companyId}`),
+          api.get(`/get_directors/${this.companyId}`)
+        ])
+        this.employeeData = employees.data.data
+        this.directorData = directors.data.data
+        console.log(employees)
+      } catch (error) {
+        console.error('Error fetching data:', error)
+        this.error = 'Не удалось загрузить данные'
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async exportToPDF(type, user = null) {
+      try {
+        this.exportLoading = true
+        await this.$nextTick()
+        
+        if (type === 'user' && user) {
+          await this.$refs.resultsPage.exportUserToPDF(user)
+        } else {
+          await this.$refs.resultsPage.exportAllToPDF()
+        }
+      } catch (error) {
+        console.error('Export error:', error)
+        this.$toast.error('Ошибка при экспорте')
+      } finally {
+        this.exportLoading = false
       }
     }
   }
 }
 </script>
-
-<style scoped>
-.chart {
-  height: 400px;
-}
-</style>

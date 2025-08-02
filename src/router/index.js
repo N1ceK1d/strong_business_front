@@ -8,6 +8,7 @@ import TestOCA from '@/components/test_results/TestOCA.vue'
 import ToneScale from '@/components/test_results/ToneScale.vue'
 import IQTest from '@/components/test_results/IQTest.vue'
 import TestMotivation from '@/components/test_results/TestMotivation.vue'
+import TestPotential from '@/components/test_results/TestPotential.vue'
 
 const routes = [
   {
@@ -50,7 +51,7 @@ const routes = [
   }, {
     path: '/test_results',
     name: 'TestResults',
-    component: TestMotivation,
+    component: TestPotential,
     meta: { 
         requiresAuth: false,
         showHeaderFooter: true, }

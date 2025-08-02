@@ -32,10 +32,12 @@
               </v-col>
             </v-row>
 
+            <!-- Поле "Должность" скрывается при isDirector = true -->
             <v-text-field
+              v-if="!userForm.isDirector"
               v-model="userForm.position"
               label="Должность"
-              :rules="requiredRules"
+              :rules="positionRules"
               required
               class="mb-4"
             ></v-text-field>
@@ -55,6 +57,15 @@
                 value="0"
               ></v-radio>
             </v-radio-group>
+
+            <!-- Поле "Я руководитель" только для test_id = 1 -->
+            <v-checkbox
+              v-if="testData.testId === 1"
+              v-model="userForm.isDirector"
+              label="Я руководитель"
+              class="mt-2"
+              @change="handleDirectorChange"
+            ></v-checkbox>
           </v-form>
         </template>
 
@@ -88,10 +99,15 @@ export default {
         firstName: '',
         middleName: '',
         position: '',
-        gender: null
+        gender: null,
+        isDirector: false
       },
       requiredRules: [
         v => !!v || 'Обязательное поле'
+      ],
+      // Правила для должности (требуется только если не руководитель)
+      positionRules: [
+        v => (!this.userForm.isDirector && !!v) || 'Обязательное поле'
       ]
     }
   },
@@ -119,13 +135,44 @@ export default {
       }
     },
     
+    handleDirectorChange() {
+      // При включении чекбокса "Я руководитель" очищаем поле должности
+      if (this.userForm.isDirector) {
+        this.userForm.position = '';
+      }
+      // Перепроверяем валидность формы
+      this.$nextTick(() => {
+        this.formValid = this.validateForm();
+      });
+    },
+    
+    validateForm() {
+      // Проверяем обязательные поля
+      const requiredFields = [
+        this.userForm.lastName,
+        this.userForm.firstName,
+        this.userForm.gender
+      ];
+      
+      // Должность обязательна только если не руководитель
+      if (!this.userForm.isDirector) {
+        requiredFields.push(this.userForm.position);
+      }
+      
+      return requiredFields.every(field => !!field);
+    },
+    
     startTest() {
       const query = { 
         anonymous: this.testData.isAnonymous 
       };
       
       if (!this.testData.isAnonymous) {
-        query.userData = encodeURIComponent(JSON.stringify(this.userForm));
+        const userData = { ...this.userForm };
+        if (this.testData.testId !== 1) {
+          delete userData.isDirector;
+        }
+        query.userData = encodeURIComponent(JSON.stringify(userData));
       }
 
       this.$router.push({
