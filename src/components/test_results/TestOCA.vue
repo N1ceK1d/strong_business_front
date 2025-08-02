@@ -2,17 +2,17 @@
   <v-container>
     <v-card>
       <v-card-title>Анализ характеристик личности</v-card-title>
-       <v-spacer></v-spacer>
-        <v-btn color="primary" @click="exportAllToPDF">
-          <v-icon left>mdi-file-pdf-box</v-icon>
-          Экспорт в PDF
-        </v-btn>
+      <v-spacer></v-spacer>
+      <v-btn class="ml-5" color="primary" @click="exportAllToPDF" :loading="exportLoading">
+        <v-icon left>mdi-download</v-icon>
+        Экспорт в PDF
+      </v-btn>
       <v-card-text>
-        <div v-for="(user, index) in users" :key="user.user_id" class="mb-8 chart-container" :ref="'chartContainer' + index">
+        <div v-for="(user, index) in users" :key="user.user_id" class="mb-8 chart-container" :id="'chartContainer' + index">
           <div class="d-flex justify-space-between align-center mb-2">
             <h3>{{ user.fullname }} ({{ user.gender ? 'Мужчина' : 'Женщина' }})</h3>
-            <v-btn small @click="exportSingleToPDF(index)" color="primary">
-              <v-icon small left>mdi-file-pdf-box</v-icon>
+            <v-btn small @click="exportSingleToPDF(index)" color="primary" :loading="singleExportLoading === index">
+              <v-icon small left>mdi-download</v-icon>
               Экспорт
             </v-btn>
           </div>
@@ -25,6 +25,15 @@
         </div>
       </v-card-text>
     </v-card>
+
+    <v-snackbar v-model="exportSnackbar" :timeout="3000">
+      {{ exportMessage }}
+      <template v-slot:action="{ attrs }">
+        <v-btn color="blue" text v-bind="attrs" @click="exportSnackbar = false">
+          Закрыть
+        </v-btn>
+      </template>
+    </v-snackbar>
   </v-container>
 </template>
 
@@ -41,9 +50,8 @@ import {
 } from 'echarts/components'
 import VChart from 'vue-echarts'
 import api from '@/services/api'
-import result_value from '@/components/test_results/percents.json'
-import html2canvas from 'html2canvas'
-import jsPDF from 'jspdf'
+import result_value from '../data/percents.json'
+import html2pdf from 'html2pdf.js'
 
 use([
   CanvasRenderer,
@@ -62,6 +70,10 @@ export default {
       users: [],
       params: [],
       scores: {},
+      exportLoading: false,
+      singleExportLoading: null,
+      exportSnackbar: false,
+      exportMessage: '',
       baseChartOptions: {
         tooltip: {
           trigger: 'axis',
@@ -91,7 +103,7 @@ export default {
           axisLabel: {
             rotate: 30,
             interval: 0,
-            fontSize: 15 // Уменьшенный размер шрифта характеристик
+            fontSize: 15
           }
         },
         yAxis: {
@@ -120,86 +132,136 @@ export default {
   },
   methods: {
     async exportAllToPDF() {
-      const pdf = new jsPDF('p', 'mm', 'a4')
-      let position = 20
-
-      pdf.setFontSize(16)
-      pdf.text('Результаты OCA теста', 105, position, { align: 'center' })
-      position += 15
-
-      for (let i = 0; i < this.users.length; i++) {
-        const container = this.$refs['chartContainer' + i][0]
-        const user = this.users[i]
-        
-        pdf.setFontSize(12)
-        pdf.text(user.fullname + ` (${user.gender ? 'Мужчина' : 'Женщина'})`, 15, position)
-        position += 10
-
-        const canvas = await html2canvas(container.querySelector('.chart'), {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#FFFFFF'
-        })
-
-        const imgData = canvas.toDataURL('image/png')
-        const imgWidth = 180
-        const imgHeight = (canvas.height * imgWidth) / canvas.width
-
-        if (position + imgHeight > 280) {
-          pdf.addPage()
-          position = 20
-        }
-
-        pdf.addImage(imgData, 'PNG', 15, position, imgWidth, imgHeight)
-        position += imgHeight + 15
-
-        if (i < this.users.length - 1 && position > 250) {
-          pdf.addPage()
-          position = 20
-        }
-      }
-
-      pdf.save('OCA_Все_результаты.pdf')
-    },
-    async exportSingleToPDF(index) {
-      const pdf = new jsPDF('p', 'mm', 'a4')
-      const container = this.$refs['chartContainer' + index][0]
-      const user = this.users[index]
-
-      pdf.setFontSize(16)
-      pdf.text('Результаты OCA теста', 105, 20, { align: 'center' })
+      this.exportLoading = true
+      this.exportMessage = 'Подготовка PDF документа...'
+      this.exportSnackbar = true
       
-      pdf.setFontSize(12)
-      pdf.text(user.fullname + ` (${user.gender ? 'Мужчина' : 'Женщина'})`, 15, 35)
-
-      const canvas = await html2canvas(container.querySelector('.chart'), {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#FFFFFF'
-      })
-
-      const imgWidth = 180
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
-      const imgData = canvas.toDataURL('image/png')
-
-      // Центрируем изображение
-      const yPosition = Math.max(45, (297 - imgHeight) / 2) // 297mm - высота A4
-
-      pdf.addImage(imgData, 'PNG', 15, yPosition, imgWidth, imgHeight)
-      pdf.save(`OCA_${user.fullname}.pdf`.replace(/\s+/g, '_'))
-    },
-
-    exportCurrentToPDF(user) {
-      const index = this.users.findIndex(u => u.user_id === user.user_id)
-      if (index >= 0) {
-        this.exportSingleToPDF(index)
+      try {
+        // Даем время для отображения сообщения
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        const element = document.createElement('div')
+        const title = document.createElement('h2')
+        title.textContent = 'Результаты OCA теста'
+        title.style.textAlign = 'center'
+        title.style.marginBottom = '20px'
+        element.appendChild(title)
+        
+        // Сначала получаем все изображения диаграмм
+        const charts = []
+        for (let i = 0; i < this.users.length; i++) {
+          const chartInstance = this.$refs[`chart${i}`][0].chart
+          const imgData = await this.getChartImage(chartInstance)
+          charts.push(imgData)
+        }
+        
+        // Затем создаем HTML с изображениями
+        for (let i = 0; i < this.users.length; i++) {
+          const user = this.users[i]
+          const userDiv = document.createElement('div')
+          
+          const nameHeader = document.createElement('h3')
+          nameHeader.textContent = `${user.fullname} (${user.gender ? 'Мужчина' : 'Женщина'})`
+          nameHeader.style.marginBottom = '10px'
+          userDiv.appendChild(nameHeader)
+          
+          const chartImg = document.createElement('img')
+          chartImg.src = charts[i]
+          chartImg.style.width = '100%'
+          chartImg.style.marginBottom = '20px'
+          userDiv.appendChild(chartImg)
+          
+          element.appendChild(userDiv)
+          
+          if (i < this.users.length - 1) {
+            const pageBreak = document.createElement('div')
+            pageBreak.style.pageBreakAfter = 'always'
+            element.appendChild(pageBreak)
+          }
+        }
+        
+        const opt = {
+          margin: 10,
+          filename: 'OCA_Все_результаты.pdf',
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        }
+        
+        await html2pdf().set(opt).from(element).save()
+        this.exportMessage = 'PDF успешно сгенерирован!'
+      } catch (error) {
+        console.error('Ошибка при экспорте PDF:', error)
+        this.exportMessage = 'Ошибка при создании PDF'
+      } finally {
+        this.exportLoading = false
       }
     },
+    
+    async exportSingleToPDF(index) {
+      this.singleExportLoading = index
+      this.exportMessage = 'Подготовка PDF документа...'
+      this.exportSnackbar = true
+      
+      try {
+        // Даем время для отображения сообщения
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        const chartInstance = this.$refs[`chart${index}`][0].chart
+        const imgData = await this.getChartImage(chartInstance)
+        
+        const element = document.createElement('div')
+        const title = document.createElement('h2')
+        title.textContent = 'Результаты OCA теста'
+        title.style.textAlign = 'center'
+        title.style.marginBottom = '20px'
+        element.appendChild(title)
+        
+        const user = this.users[index]
+        const nameHeader = document.createElement('h3')
+        nameHeader.textContent = `${user.fullname} (${user.gender ? 'Мужчина' : 'Женщина'})`
+        nameHeader.style.marginBottom = '10px'
+        element.appendChild(nameHeader)
+        
+        const chartImg = document.createElement('img')
+        chartImg.src = imgData
+        chartImg.style.width = '100%'
+        element.appendChild(chartImg)
+        
+        const opt = {
+          margin: 10,
+          filename: `OCA_${user.fullname}.pdf`.replace(/\s+/g, '_'),
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        }
+        
+        await html2pdf().set(opt).from(element).save()
+        this.exportMessage = 'PDF успешно сгенерирован!'
+      } catch (error) {
+        console.error('Ошибка при экспорте PDF:', error)
+        this.exportMessage = 'Ошибка при создании PDF'
+      } finally {
+        this.singleExportLoading = null
+      }
+    },
+    
+    getChartImage(chartInstance) {
+      return new Promise((resolve) => {
+        // Даем время для полного рендеринга графика
+        setTimeout(() => {
+          resolve(chartInstance.getDataURL({
+            type: 'png',
+            pixelRatio: 2,
+            backgroundColor: '#fff'
+          }))
+        }, 300)
+      })
+    },
+    
     async fetchResults() {
       try {
-        const response = await api.get('/get_OCA_results/1')
+        const response = await api.get(`/get_OCA_results/${JSON.parse(localStorage.getItem("user_info")).company_id}`)
         this.users = response.data.users || []
         this.params = response.data.params || []
         this.scores = response.data.scores || {}
@@ -207,6 +269,7 @@ export default {
         console.error('Ошибка загрузки результатов:', error)
       }
     },
+    
     getCategoryFromName(name) {
       const firstChar = name.charAt(0).toLowerCase()
       if (result_value.man[firstChar] && result_value.woman[firstChar]) {
@@ -214,6 +277,7 @@ export default {
       }
       return 'a'
     },
+    
     getPercentile(gender, paramName, score) {
       const category = this.getCategoryFromName(paramName)
       const genderData = gender ? result_value.man : result_value.woman
@@ -244,6 +308,7 @@ export default {
       
       return categoryData[closestPoints]
     },
+    
     getUserChartOptions(user) {
       const chartData = this.params.map(param => {
         const rawScore = this.scores[param.id]?.[user.user_id] || 0

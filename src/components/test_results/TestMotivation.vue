@@ -101,7 +101,7 @@ export default {
     return {
       tab: 'list',
       users: [],
-      loading: true
+      loading: true,
     };
   },
   computed: {
@@ -117,7 +117,7 @@ export default {
     async fetchData() {
       try {
         this.loading = true;
-        const response = await api.get('/get_motivations/1');
+        const response = await api.get(`/get_motivations/${JSON.parse(localStorage.getItem("user_info")).company_id}`);
         this.users = response.data;
       } catch (error) {
         console.error('Ошибка загрузки данных:', error);

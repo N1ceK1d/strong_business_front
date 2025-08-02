@@ -9,6 +9,7 @@ import ToneScale from '@/components/test_results/ToneScale.vue'
 import IQTest from '@/components/test_results/IQTest.vue'
 import TestMotivation from '@/components/test_results/TestMotivation.vue'
 import TestPotential from '@/components/test_results/TestPotential.vue'
+import TestResults from '@/components/TestResults.vue'
 
 const routes = [
   {
@@ -48,13 +49,16 @@ const routes = [
     meta: { 
         requiresAuth: false,
         showHeaderFooter: false, }
-  }, {
-    path: '/test_results',
+  }, 
+  {
+    path: '/test_results/:test_id',
     name: 'TestResults',
-    component: TestPotential,
+    component: TestResults,
     meta: { 
-        requiresAuth: false,
-        showHeaderFooter: true, }
+      requiresAuth: true,
+      showHeaderFooter: true
+    },
+    props: true // Передаем параметры маршрута как props
   }
   
 ]

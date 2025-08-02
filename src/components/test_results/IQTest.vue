@@ -77,7 +77,6 @@ import html2pdf from 'html2pdf.js'
 export default {
   data() {
     return {
-      companyId: 1,
       loading: false,
       results: [],
       headers: [
@@ -184,7 +183,7 @@ export default {
     async fetchResults() {
       this.loading = true
       try {
-        const response = await api.get(`/get_iq_results/1`)
+        const response = await api.get(`/get_iq_results/${JSON.parse(localStorage.getItem("user_info")).company_id}`)
         console.log(response)
         this.results = response.data
       } catch (error) {

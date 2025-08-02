@@ -49,7 +49,6 @@ export default {
       loading: false,
       exportLoading: false,
       error: null,
-      companyId: 1
     }
   },
   created() {
@@ -59,10 +58,12 @@ export default {
     async fetchData() {
       this.loading = true
       this.error = null
+      
       try {
+        console.log(this.company_id)
         const [employees, directors] = await Promise.all([
-          api.get(`/get_employee/${this.companyId}`),
-          api.get(`/get_directors/${this.companyId}`)
+          api.get(`/get_employee/${JSON.parse(localStorage.getItem("user_info")).company_id}`),
+          api.get(`/get_directors/${JSON.parse(localStorage.getItem("user_info")).company_id}`)
         ])
         this.employeeData = employees.data.data
         this.directorData = directors.data.data

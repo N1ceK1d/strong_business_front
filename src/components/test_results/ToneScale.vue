@@ -59,7 +59,7 @@
 <script>
 import html2pdf from 'html2pdf.js';
 import api from '@/services/api';
-import tone_scale_levels from './tones_descriptions';
+import tone_scale_levels from '../data/tones_descriptions';
 
 export default {
   data() {
@@ -120,7 +120,7 @@ export default {
     async fetchResults() {
       this.loading = true;
       try {
-        const response = await api.get('/get_ToneScale/1');
+        const response = await api.get(`/get_ToneScale/${JSON.parse(localStorage.getItem("user_info")).company_id}`);
         if (response.data.success) {
           this.points = Object.entries(response.data.data).map(([user_id, userData]) => ({
             user_id,
@@ -148,7 +148,7 @@ export default {
     async deleteSingle(item) {
       try {
         if (confirm(`Удалить результат для пользователя ${item.user_fullname}?`)) {
-          await api.post('/delete_results', { ids: [item.user_id] });
+          await api.post('/delete_results', { ids: [item.user_id], company_id: this.company_id });
           this.$toast.success('Результат удален');
           this.fetchResults();
         }

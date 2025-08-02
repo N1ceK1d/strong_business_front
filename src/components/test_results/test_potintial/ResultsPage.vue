@@ -125,6 +125,7 @@
 </template>
 
 <script>
+import html2canvas from 'html2canvas'
 import BarChart from './BarChart.vue'
 import html2pdf from 'html2pdf.js'
 
@@ -242,38 +243,53 @@ export default {
       }
     },
     async exportAllToPDF() {
-      try {
-         const pdfContainer = document.getElementById('pdf-template')
-            const wrapper = pdfContainer.parentElement
-            wrapper.style.width = '210mm'
-            wrapper.style.height = '297mm'
-        const opt = {
-          margin: 10,
-          filename: `Все_результаты.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2 },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        }
+  try {
+    const { jsPDF } = await import('jspdf');
+    const pdf = new jsPDF({
+      unit: 'mm',
+      format: 'a4',
+      orientation: 'portrait'
+    });
 
-        const elements = this.allUsers.map(user => 
-          document.getElementById(`user-pdf-${user.user_id}`)
-        )
-
-        await html2pdf().set(opt).from(elements[0]).toPdf().get('pdf').then(async pdf => {
-          for (let i = 1; i < elements.length; i++) {
-            pdf.addPage()
-            await html2pdf().set(opt).from(elements[i]).toContainer().toCanvas().toPdf(pdf)
-          }
-        }).save()
-      } catch (error) {
-        console.error('Export error:', error)
-        this.$toast.error('Ошибка при экспорте')
-      } finally {
-        // Возвращаем исходные стили
-        wrapper.style.width = '0'
-        wrapper.style.height = '0'
-      }
+    for (const [index, user] of this.allUsers.entries()) {
+      const element = document.getElementById(`user-pdf-${user.user_id}`);
+      if (!element) continue;
+      
+      // Временно делаем элемент видимым
+      element.style.visibility = 'visible';
+      element.style.position = 'absolute';
+      element.style.left = '0';
+      element.style.top = '0';
+      
+      // Конвертируем в canvas
+      const canvas = await html2canvas(element, {
+        scale: 5,
+        logging: true,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: element.scrollWidth
+      });
+      
+      // Добавляем в PDF
+      const imgData = canvas.toDataURL('image/jpeg', .98);
+      const pdfWidth = pdf.internal.pageSize.getWidth() - 20;
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      if (index > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 10, 10, pdfWidth, pdfHeight);
+      
+      // Возвращаем стили
+      element.style.visibility = 'hidden';
+      element.style.position = 'fixed';
+      element.style.left = '-9999px';
     }
+
+    pdf.save('Все_результаты.pdf');
+  } catch (error) {
+    console.error('Export error:', error);
+    this.$toast.error('Ошибка при экспорте: ' + error.message);
+  }
+}
   }
 }
 </script>
@@ -311,20 +327,22 @@ export default {
 }
 
 .pdf-params-table {
-  margin-top: 10mm;
+  margin-top: 5mm; /* Уменьшаем отступ */
+  transform: scale(0.9); /* Масштабируем всю таблицу */
+  transform-origin: top left;
+  width: 90%; /* Уменьшаем ширину */
 }
 
 .pdf-params-table table {
+  font-size: 12pt; /* Уменьшаем размер шрифта */
   width: 100%;
   border-collapse: collapse;
-  font-size: 11pt;
 }
 
 .pdf-params-table th, 
 .pdf-params-table td {
-  border: 1px solid #ddd;
-  padding: 3mm;
-  text-align: left;
+  padding: 1mm 2mm; /* Уменьшаем padding */
+  line-height: 1.2;
 }
 
 .pdf-params-table th {
