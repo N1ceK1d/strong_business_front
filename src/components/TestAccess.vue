@@ -100,7 +100,8 @@ export default {
         middleName: '',
         position: '',
         gender: null,
-        isDirector: false
+        isDirector: false,
+        company_id: null
       },
       requiredRules: [
         v => !!v || 'Обязательное поле'
@@ -129,6 +130,8 @@ export default {
         }
         
         this.testData = decryptedData;
+        this.userForm.company_id = this.testData.companyId;
+        console.log(this.testData)
       } catch (error) {
         console.error('Ошибка расшифровки:', error);
         this.testData = null;
@@ -164,7 +167,8 @@ export default {
     
     startTest() {
       const query = { 
-        anonymous: this.testData.isAnonymous 
+        anonymous: this.testData.isAnonymous,
+        companyId: this.testData.companyId
       };
       
       if (!this.testData.isAnonymous) {

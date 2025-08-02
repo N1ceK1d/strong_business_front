@@ -132,7 +132,7 @@ export default {
         
         testData.value = {
           isAnonymous: route.query.anonymous === 'true',
-          testId: route.params.id || route.params.test_data
+          testId: route.params.id || route.params.test_data,
         }
       } catch (error) {
         console.error('Ошибка декодирования данных пользователя:', error)
@@ -193,7 +193,7 @@ export default {
               const selected = shuffled.slice(0, 3).map(a => a.id)
               selectedAnswers.value[question.id].answerIds = selected
             } else {
-              const randomIndex = Math.floor(Math.random() * question.answers.length)
+              const randomIndex = 0
               const selectedAnswer = question.answers[randomIndex]
               selectedAnswers.value[question.id] = {
                 answerId: selectedAnswer.id,
@@ -243,7 +243,7 @@ export default {
 
         const answersData = {
           test_id: testId.value,
-          answers: []
+          answers: [],
         }
 
         if (isSingleQuestion.value) {
@@ -266,8 +266,9 @@ export default {
 
         if (!testData.value.isAnonymous && userData.value) {
           answersData.user_data = userData.value
+        } else {
+          answersData.user_data = route.query
         }
-        
         await api.post('/save_answers', answersData)
         alert('Ответы успешно отправлены!')
         

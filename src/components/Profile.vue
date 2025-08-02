@@ -228,6 +228,7 @@ export default {
       
       const dataToEncrypt = {
         testId: this.selectedTestId,
+        companyId: this.user.company_id,
         isAnonymous: this.isAnonymous && this.selectedTestAllowsAnonymous, // Двойная проверка
         timestamp: Date.now()
       };

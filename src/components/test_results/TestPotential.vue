@@ -26,7 +26,7 @@
       @click="exportToPDF('all')"
       :loading="exportLoading"
     >
-      <v-icon>mdi-file-pdf</v-icon>
+      <v-icon>mdi-download</v-icon>
     </v-btn>
   </v-container>
 </template>
