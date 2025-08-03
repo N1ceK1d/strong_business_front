@@ -1,5 +1,24 @@
 <template>
   <v-container>
+    <v-dialog v-model="deleteDialog" persistent max-width="500">
+      <v-card>
+        <v-card-title class="headline">Подтверждение удаления</v-card-title>
+        <v-card-text>
+          Вы уверены, что хотите удалить результаты пользователя 
+          <strong>{{ userToDelete ? userToDelete.fullname : '' }}</strong>?
+          <br>Это действие нельзя будет отменить.
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="grey darken-1" text @click="deleteDialog = false">
+            Отмена
+          </v-btn>
+          <v-btn color="error" text @click="confirmDelete" :loading="deleteLoading">
+            Удалить
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <v-card>
       <v-card-title>Анализ характеристик личности</v-card-title>
       <v-spacer></v-spacer>
@@ -11,10 +30,16 @@
         <div v-for="(user, index) in users" :key="user.user_id" class="mb-8 chart-container" :id="'chartContainer' + index">
           <div class="d-flex justify-space-between align-center mb-2">
             <h3>{{ user.fullname }} ({{ user.gender ? 'Мужчина' : 'Женщина' }})</h3>
-            <v-btn small @click="exportSingleToPDF(index)" color="primary" :loading="singleExportLoading === index">
-              <v-icon small left>mdi-download</v-icon>
-              Экспорт
-            </v-btn>
+            <div>
+              <v-btn small @click="exportSingleToPDF(index)" color="primary" :loading="singleExportLoading === index" class="mr-2">
+                <v-icon small left>mdi-download</v-icon>
+                Экспорт
+              </v-btn>
+              <v-btn small @click="openDeleteDialog(user)" color="error">
+                <v-icon small left>mdi-delete</v-icon>
+                Удалить
+              </v-btn>
+            </div>
           </div>
           <v-chart
             class="chart"
@@ -67,6 +92,9 @@ export default {
   components: { VChart },
   data() {
     return {
+      deleteDialog: false,
+      deleteLoading: false,
+      userToDelete: null,
       users: [],
       params: [],
       scores: {},
@@ -277,6 +305,34 @@ export default {
       }
       return 'a'
     },
+
+    openDeleteDialog(user) {
+      this.userToDelete = user
+      this.deleteDialog = true
+    },
+    
+    async confirmDelete() {
+      if (!this.userToDelete) return
+      
+      this.deleteLoading = true
+      try {
+        const response = await api.delete('/delete_answers', { 
+          data: { user_id: this.userToDelete.user_id }
+        })
+        console.log(response.data)
+        this.exportMessage = 'Результаты пользователя успешно удалены'
+        this.exportSnackbar = true
+        this.fetchResults() // Обновляем список
+      } catch (error) {
+        console.error('Ошибка при удалении пользователя:', error)
+        this.exportMessage = 'Ошибка при удалении пользователя'
+        this.exportSnackbar = true
+      } finally {
+        this.deleteLoading = false
+        this.deleteDialog = false
+        this.userToDelete = null
+      }
+    },
     
     getPercentile(gender, paramName, score) {
       const category = this.getCategoryFromName(paramName)
@@ -307,6 +363,23 @@ export default {
       }
       
       return categoryData[closestPoints]
+    },
+
+    async deleteUser(userId) {
+        try {
+          console.log(`Удаление пользователя с ID: ${userId}`)
+          this.exportMessage = `Функция удаления пользователя ${userId} будет реализована позже`
+          this.exportSnackbar = true
+          const response = await api.delete('/delete_answers', { 
+            data: { user_id: userId } // Правильный формат отправки данных для DELETE
+          });
+          console.log(response.data);
+          this.fetchResults(); // Обновляем список после удаления
+        } catch (error) {
+          console.error('Ошибка при удалении пользователя:', error)
+          this.exportMessage = 'Ошибка при удалении пользователя'
+          this.exportSnackbar = true
+        }
     },
     
     getUserChartOptions(user) {

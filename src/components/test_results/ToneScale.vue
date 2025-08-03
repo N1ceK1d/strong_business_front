@@ -1,5 +1,26 @@
 <template>
   <v-card class="mx-auto" max-width="95%">
+    <!-- Модальное окно подтверждения удаления -->
+    <v-dialog v-model="deleteDialog" persistent max-width="500">
+      <v-card>
+        <v-card-title class="headline">Подтверждение удаления</v-card-title>
+        <v-card-text>
+          Вы уверены, что хотите удалить результат теста для
+          <strong>{{ userToDelete?.user_fullname || 'пользователя' }}</strong>?
+          <br>Это действие нельзя будет отменить.
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="grey darken-1" text @click="deleteDialog = false">
+            Отмена
+          </v-btn>
+          <v-btn color="error" text @click="confirmDelete" :loading="deleteLoading">
+            Удалить
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-card-title class="d-flex justify-space-between align-center">
       <span class="text-h5">Результаты теста эмоционального состояния</span>
       <div>
@@ -36,7 +57,7 @@
           <v-btn
             color="error"
             small
-            @click="deleteSingle(item)"
+            @click="openDeleteDialog(item)"
           >
             <v-icon small>mdi-delete</v-icon>
           </v-btn>
@@ -66,6 +87,11 @@ export default {
     return {
       points: [],
       loading: false,
+      // Данные для модального окна удаления
+      deleteDialog: false,
+      deleteLoading: false,
+      userToDelete: null,
+      
       headers: [
         { 
           text: 'Пользователь', 
@@ -117,6 +143,32 @@ export default {
     this.fetchResults();
   },
   methods: {
+    // Методы для работы с модальным окном удаления
+    openDeleteDialog(item) {
+      this.userToDelete = item;
+      this.deleteDialog = true;
+    },
+    
+    async confirmDelete() {
+      if (!this.userToDelete) return;
+      
+      this.deleteLoading = true;
+      try {
+        await api.delete('/delete_results', await api.delete('/delete_answers', { 
+          data: { user_id: this.userToDelete.user_data.id }
+        }));
+        this.$toast.success('Результат удален');
+        await this.fetchResults();
+      } catch (error) {
+        console.error('Ошибка удаления:', error);
+        this.$toast.error('Ошибка при удалении результата');
+      } finally {
+        this.deleteLoading = false;
+        this.deleteDialog = false;
+        this.userToDelete = null;
+      }
+    },
+    
     async fetchResults() {
       this.loading = true;
       try {
@@ -143,19 +195,6 @@ export default {
     
     getLevelDescription(level) {
       return this.levelDescriptions[level] || 'Неизвестный уровень';
-    },
-    
-    async deleteSingle(item) {
-      try {
-        if (confirm(`Удалить результат для пользователя ${item.user_fullname}?`)) {
-          await api.post('/delete_results', { ids: [item.user_id], company_id: this.company_id });
-          this.$toast.success('Результат удален');
-          this.fetchResults();
-        }
-      } catch (error) {
-        console.error('Ошибка удаления:', error);
-        this.$toast.error('Ошибка при удалении результата');
-      }
     },
     
     async exportPDF(onlySelected = false) {

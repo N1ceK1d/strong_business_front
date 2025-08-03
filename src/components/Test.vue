@@ -224,7 +224,7 @@ export default {
               const selected = shuffled.slice(0, 3).map(a => a.id)
               selectedAnswers.value[question.id].answerIds = selected
             } else {
-              const randomIndex = 0
+              const randomIndex = Math.floor(Math.random() * question.answers.length);
               const selectedAnswer = question.answers[randomIndex]
               selectedAnswers.value[question.id] = {
                 answerId: selectedAnswer.id,
@@ -302,8 +302,8 @@ export default {
           answersData.user_data = route.query
         }
         await api.post('/save_answers', answersData)
-        alert('Ответы успешно отправлены!')
-        
+        //alert('Ответы успешно отправлены!')
+        window.location.href = `/end_test`;
       } catch (error) {
         console.error("Ошибка при отправке ответов:", error)
         alert('Произошла ошибка при отправке ответов')

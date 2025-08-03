@@ -35,10 +35,18 @@
             <v-col cols="12">
               <v-card>
                 <v-card-title @click="toggleUserExpansion(user.user_id)" style="cursor: pointer;">
-                {{ user.fullname }}
-                <v-chip small class="ml-2" :color="getGenderColor(user.gender)">
+                  <v-chip small class="ml-2" :color="getGenderColor(user.gender)">
                   {{ getGenderLabel(user.gender) }}
                 </v-chip>
+                {{ user.fullname }} 
+                
+                
+                <label v-if="user.fullname != 'Аноним' && user.post_position != ''">
+                  ({{ user.post_position }})
+                </label>
+                <label v-else-if="user.fullname != 'Аноним' && user.post_position == ''">
+                  (Руководитель)
+                </label>
                 <v-spacer />
                 <v-btn icon @click="expandUser[user.user_id] = !expandUser[user.user_id]">
                   <v-icon>{{ expandUser[user.user_id] ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
@@ -80,9 +88,9 @@
         <h2 class="pdf-title">Результаты тестирования</h2>
         <div class="pdf-user-info">
           <p><strong>ФИО:</strong> {{ user.fullname }}</p>
-          <p v-if="user.position"><strong>Должность:</strong> {{ user.position }}</p>
-          <p><strong>Пол:</strong> {{ user.gender === true ? 'Мужской' : 'Женский' }}</p>
-          <p v-if="user.isDirector"><strong>Статус:</strong> Руководитель</p>
+          <p v-if="user.post_position != '' && user.fullname != 'Аноним'"><strong>Должность:</strong> {{ user.post_position }}</p>
+          <p v-if="user.gender != null"><strong>Пол:</strong> {{ user.gender === true ? 'Мужской' : 'Женский' }}</p>
+          <p v-if="user.post_position == '' && user.fullname != 'Аноним'"><strong>Статус:</strong> Руководитель</p>
         </div>
         
         <div class="pdf-chart-container">
@@ -117,7 +125,14 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn color="green darken-1" text @click="deleteDialog = false">Отмена</v-btn>
-          <v-btn color="red darken-1" text @click="deleteUser">Удалить</v-btn>
+          <v-btn 
+            color="red darken-1" 
+            text 
+            @click="deleteUser"
+            :loading="deleteLoading"
+          >
+            Удалить
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -128,6 +143,7 @@
 import html2canvas from 'html2canvas'
 import BarChart from './BarChart.vue'
 import html2pdf from 'html2pdf.js'
+import api from '@/services/api'
 
 export default {
   components: { BarChart },
@@ -143,6 +159,7 @@ export default {
       compareWithDirectors: false,
       expandUser: {},
       deleteDialog: false,
+      deleteLoading: false,
       userToDelete: null,
       viewOptions: [
         { text: 'Все', value: 'all' },
@@ -202,9 +219,15 @@ export default {
       })
     },
     getGenderColor(gender) {
+      if(gender == null ) {
+        return 'gray';
+      }
       return gender === true ? 'blue' : 'pink'
     },
     getGenderLabel(gender) {
+      if(gender == null ) {
+        return '?';
+      }
       return gender === true ? 'М' : 'Ж'
     },
     confirmDelete(user) {
@@ -212,9 +235,24 @@ export default {
       this.deleteDialog = true
     },
     async deleteUser() {
-      this.$emit('delete-user', this.userToDelete)
-      this.deleteDialog = false
-      this.userToDelete = null
+      if (!this.userToDelete) return
+      
+      this.deleteLoading = true
+      try {
+        
+        await api.delete(`/delete_answers`, {
+          data: {user_id: this.userToDelete.user_id}
+        })
+        
+        
+        this.deleteDialog = false
+        this.userToDelete = null
+      } catch (error) {
+        console.error('Ошибка удаления:', error)
+      } finally {
+        this.deleteLoading = false
+        window.location.reload();
+      }
     },
     async exportUserToPDF(user) {
       try {

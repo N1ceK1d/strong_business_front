@@ -2,6 +2,27 @@
   <v-app>
     <v-main>
       <v-container>
+        <!-- Модальное окно подтверждения удаления -->
+        <v-dialog v-model="deleteDialog" persistent max-width="500">
+          <v-card>
+            <v-card-title class="headline">Подтверждение удаления</v-card-title>
+            <v-card-text>
+              Вы уверены, что хотите удалить результат тестирования
+              <strong>{{ userToDelete?.user_data?.fullname || 'пользователя' }}</strong>?
+              <br>Это действие нельзя будет отменить.
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn color="grey darken-1" text @click="deleteDialog = false">
+                Отмена
+              </v-btn>
+              <v-btn color="error" text @click="confirmDelete" :loading="deleteLoading">
+                Удалить
+              </v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
         <v-card>
           <v-card-title class="headline">
             Результаты тестирования (Компания #{{ companyId }})
@@ -30,32 +51,32 @@
 
               <template v-slot:item.actions="{ item }">
                 <v-tooltip bottom>
-                  <template v-slot:activator="{ on }">
-                    <v-btn
-                      icon
-                      color="primary"
-                      v-on="on"
-                      @click="exportToPDF(item)"
-                    >
-                      <v-icon>mdi-download</v-icon>
-                    </v-btn>
-                  </template>
-                  <span>Экспорт в PDF</span>
-                </v-tooltip>
+  <template v-slot:activator="{ props: tooltipProps }">
+    <v-btn
+      icon
+      color="primary"
+      v-bind="tooltipProps"
+      @click="exportToPDF(item)"
+    >
+      <v-icon>mdi-download</v-icon>
+    </v-btn>
+  </template>
+  <span>Экспорт в PDF</span>
+</v-tooltip>
 
-                <v-tooltip bottom>
-                  <template v-slot:activator="{ on }">
-                    <v-btn
-                      icon
-                      color="error"
-                      v-on="on"
-                      @click="deleteResult(item.originalData)"
-                    >
-                      <v-icon>mdi-delete</v-icon>
-                    </v-btn>
-                  </template>
-                  <span>Удалить результат</span>
-                </v-tooltip>
+<v-tooltip bottom>
+  <template v-slot:activator="{ props: tooltipProps }">
+    <v-btn
+      icon
+      color="error"
+      v-bind="tooltipProps"
+      @click="openDeleteDialog(item.originalData)"
+    >
+      <v-icon>mdi-delete</v-icon>
+    </v-btn>
+  </template>
+  <span>Удалить результат</span>
+</v-tooltip>
               </template>
             </v-data-table>
           </v-card-text>
@@ -79,6 +100,11 @@ export default {
     return {
       loading: false,
       results: [],
+      // Данные для модального окна удаления
+      deleteDialog: false,
+      deleteLoading: false,
+      userToDelete: null,
+      
       headers: [
         { 
           title: 'ФИО испытуемого', 
@@ -129,6 +155,9 @@ export default {
     }
   },
   computed: {
+    companyId() {
+      return JSON.parse(localStorage.getItem("user_info"))?.company_id || 'N/A'
+    },
     processedResults() {
       return this.results.map(result => {
         const evaluation = this.evaluateResult(result.user_data.points)
@@ -141,6 +170,30 @@ export default {
     }
   },
   methods: {
+    // Методы для работы с модальным окном удаления
+    openDeleteDialog(item) {
+      this.userToDelete = item
+      this.deleteDialog = true
+    },
+    
+    async confirmDelete() {
+      if (!this.userToDelete) return
+      
+      this.deleteLoading = true
+      try {
+        await api.delete('/delete_answers', { 
+          data: { user_id: this.userToDelete.user_data.id }
+        });
+        await this.fetchResults()
+      } catch (error) {
+        console.error('Ошибка при удалении результата:', error)
+      } finally {
+        this.deleteLoading = false
+        this.deleteDialog = false
+        this.userToDelete = null
+      }
+    },
+    
     evaluateResult(points) {
       if (points >= 135 && points <= 200) {
         return {
@@ -180,10 +233,11 @@ export default {
         }
       }
     },
+    
     async fetchResults() {
       this.loading = true
       try {
-        const response = await api.get(`/get_iq_results/${JSON.parse(localStorage.getItem("user_info")).company_id}`)
+        const response = await api.get(`/get_iq_results/${this.companyId}`)
         console.log(response)
         this.results = response.data
       } catch (error) {
@@ -193,14 +247,17 @@ export default {
         this.loading = false
       }
     },
+    
     exportToPDF(item) {
       const content = this.generateSinglePdfContent(item)
       this.generatePdf(content, `Результат_${item.originalData.user_data.fullname}.pdf`)
     },
+    
     exportAllToPDF() {
       const content = this.generateAllPdfContent()
       this.generatePdf(content, `Все_результаты_компании_${this.companyId}.pdf`)
     },
+    
     generatePdf(content, filename) {
       const container = document.getElementById('pdf-export-container')
       container.innerHTML = content
@@ -221,6 +278,7 @@ export default {
           container.innerHTML = ''
         })
     },
+    
     generateSinglePdfContent(item) {
       return `
         <div style="font-family: Arial, sans-serif; padding: 20px;">
@@ -246,6 +304,7 @@ export default {
         </div>
       `
     },
+    
     generateAllPdfContent() {
       let rows = ''
       this.processedResults.forEach(item => {
@@ -282,23 +341,6 @@ export default {
           </table>
         </div>
       `
-    },
-    async deleteResult(item) {
-      try {
-        const confirmed = await this.$confirm(
-          `Вы уверены, что хотите удалить результат пользователя ${item.user_data.fullname}?`,
-          { title: 'Подтверждение удаления' }
-        )
-        
-        if (confirmed) {
-          await api.delete(`/test/results/${item.user_data.id}`)
-          this.$toast.success('Результат успешно удален')
-          await this.fetchResults()
-        }
-      } catch (error) {
-        console.error('Ошибка при удалении результата:', error)
-        this.$toast.error('Не удалось удалить результат')
-      }
     }
   },
   mounted() {

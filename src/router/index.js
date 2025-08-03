@@ -4,12 +4,8 @@ import Profile from '@/components/Profile.vue'
 import Authorization from '@/components/Authorization.vue'
 import Test from '@/components/Test.vue'
 import TestAccess from '@/components/TestAccess.vue'
-import TestOCA from '@/components/test_results/TestOCA.vue'
-import ToneScale from '@/components/test_results/ToneScale.vue'
-import IQTest from '@/components/test_results/IQTest.vue'
-import TestMotivation from '@/components/test_results/TestMotivation.vue'
-import TestPotential from '@/components/test_results/TestPotential.vue'
 import TestResults from '@/components/TestResults.vue'
+import EndTest from '@/components/EndTest.vue'
 
 const routes = [
   {
@@ -41,6 +37,15 @@ const routes = [
     meta: { 
       requiresAuth: false,
       showHeaderFooter: false, }
+  },
+  {
+    path: '/end_test',
+    name: 'EndTest',
+    component: EndTest,
+    meta: {
+      requiresAuth: false,
+      showHeaderFooter: false
+    },
   },
   {
     path: '/test-access/:data',

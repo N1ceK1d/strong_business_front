@@ -234,11 +234,25 @@
               <v-card-title>Настройки профиля</v-card-title>
               <v-card-text>
                 <v-form @submit.prevent="saveProfile">
-                  <v-text-field
-                    v-model="editUser.fullName"
-                    label="ФИО"
-                    prepend-icon="mdi-account"
-                  ></v-text-field>
+                  <v-row class="px-2">
+                    <v-text-field
+                      v-model="editUser.last_name"
+                      label="Фамилия"
+                      class="mx-1 p-1"
+                      prepend-icon="mdi-account"
+                    ></v-text-field>
+                    <v-text-field
+                      v-model="editUser.first_name"
+                      label="Имя"
+                      class="mx-1 p-1"
+                    ></v-text-field>
+                    <v-text-field
+                      v-model="editUser.middle_name"
+                      label="Отчество"
+                      class="mx-1 p-1"
+                    ></v-text-field>
+                  </v-row>
+                 
                   
                   <v-text-field
                     v-model="editUser.email"
@@ -251,12 +265,6 @@
                     v-model="editUser.phone"
                     label="Телефон"
                     prepend-icon="mdi-phone"
-                  ></v-text-field>
-                  
-                  <v-text-field
-                    v-model="editUser.company"
-                    label="Компания"
-                    prepend-icon="mdi-office-building"
                   ></v-text-field>
                   
                   <v-btn
@@ -622,9 +630,24 @@ export default {
     goToTestResults(testId) {
       this.$router.push(`/test_results/${testId}`);
     },
-    saveProfile() {
+    async saveProfile() {
       Object.assign(this.user, this.editUser);
+      try {
+        this.updateLocalStorageUserData(this.editUser);
+        const response = await api.put('/update_user', this.editUser);
+      } catch (error) {
+        console.error(error);
+      }
       alert('Изменения сохранены!');
+    },
+    updateLocalStorageUserData(newData) {
+      const ls_data = JSON.parse(localStorage.getItem('user_info'));
+      ls_data.first_name = this.editUser.first_name;
+      ls_data.last_name = this.editUser.last_name;
+      ls_data.middle_name = this.editUser.middle_name;
+      ls_data.email = this.editUser.email;
+      ls_data.phone = this.editUser.phone;
+      localStorage.setItem('user_info', JSON.stringify(ls_data));
     },
     generateLink() {
       if (!this.selectedTestId) return;

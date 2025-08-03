@@ -1,5 +1,24 @@
 <template>
   <v-container>
+    <v-dialog v-model="userDeleteDialog" persistent max-width="500">
+      <v-card>
+        <v-card-title class="headline">Подтверждение удаления</v-card-title>
+        <v-card-text>
+          Вы уверены, что хотите удалить все мотивации сотрудника 
+          <strong>{{ userToDelete?.user_name || 'Анонимный сотрудник' }}</strong>?
+          <br>Это действие нельзя будет отменить.
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="grey darken-1" text @click="userDeleteDialog = false">
+            Отмена
+          </v-btn>
+          <v-btn color="error" text @click="deleteUser" :loading="deleteLoading">
+            Удалить
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <v-tabs v-model="tab" grow>
       <v-tab value="list">Список мотиваций</v-tab>
       <v-tab value="stats">Статистика</v-tab>
@@ -30,7 +49,7 @@
                       color="error"
                       size="small"
                       class="ml-2 mr-1"
-                      @click="deleteUser(user.user_id)"
+                      @click="openUserDeleteDialog(user)"
                     >
                       <v-icon>mdi-delete</v-icon>
                     </v-btn>
@@ -56,13 +75,6 @@
                         small
                       >
                         {{ index + 1 }}. {{ motivation.text }}
-                        <v-icon
-                          small
-                          class="ml-1"
-                          @click="deleteMotivation(user.user_id, motivation.id)"
-                        >
-                          mdi-close
-                        </v-icon>
                       </v-chip>
                       
                     </div>
@@ -102,6 +114,8 @@ export default {
       tab: 'list',
       users: [],
       loading: true,
+      userDeleteDialog: false,
+      userToDelete: null,
     };
   },
   computed: {
@@ -125,38 +139,29 @@ export default {
         this.loading = false;
       }
     },
-    async deleteUser(userId) {
+    openUserDeleteDialog(user) {
+      this.userToDelete = user;
+      this.userDeleteDialog = true;
+    },
+    async deleteUser() {
+      if (!this.userToDelete) return;
+      
+      this.deleteLoading = true;
       try {
-        this.loading = true;
-        await api.delete(`/users/${userId}`);
-        this.users = this.users.filter(user => user.user_id !== userId);
+        await api.delete('/delete_answers', { 
+          data: { user_id: this.userToDelete.user_id }
+        });
+        this.fetchData();
+        this.$toast.success('Мотивации сотрудника успешно удалены');
       } catch (error) {
         console.error('Ошибка удаления пользователя:', error);
+        this.$toast.error('Ошибка при удалении мотиваций сотрудника');
       } finally {
-        this.loading = false;
+        this.deleteLoading = false;
+        this.userDeleteDialog = false;
+        this.userToDelete = null;
       }
     },
-    async deleteMotivation(userId, motivationId) {
-      try {
-        this.loading = true;
-        await api.delete(`/users/${userId}/motivations/${motivationId}`);
-        
-        // Обновляем локальные данные без запроса к серверу
-        this.users = this.users.map(user => {
-          if (user.user_id === userId) {
-            return {
-              ...user,
-              motivations: user.motivations.filter(m => m.id !== motivationId)
-            };
-          }
-          return user;
-        });
-      } catch (error) {
-        console.error('Ошибка удаления мотивации:', error);
-      } finally {
-        this.loading = false;
-      }
-    }
   },
   mounted() {
     this.fetchData();

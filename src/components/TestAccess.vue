@@ -1,5 +1,8 @@
 <template>
   <v-container>
+    <v-card v-if="testData" class="my-4 py-1 px-1">
+      <div v-html="testDescription"></div>
+    </v-card>
     <v-card v-if="testData">
       <v-card-title>Информация о тесте</v-card-title>
       <v-card-text>
@@ -87,6 +90,7 @@
 
 <script>
 import CryptoJS from 'crypto-js';
+import test_descriptions from './data/test_descriptions';
 
 export default {
   data() {
@@ -110,6 +114,11 @@ export default {
       positionRules: [
         v => (!this.userForm.isDirector && !!v) || 'Обязательное поле'
       ]
+    }
+  },
+  computed: {
+    testDescription() {
+      return test_descriptions[this.testData.testId] || 'Описание теста не найдено';
     }
   },
   created() {
