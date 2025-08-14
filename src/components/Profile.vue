@@ -18,7 +18,7 @@
             <v-list lines="two">
               <v-list-item
                 prepend-icon="mdi-account"
-                :title="`${this.user.last_name} ${this.user.first_name} ${this.user.middle_name}`"
+                :title="userFullName"
               ></v-list-item>
               
               <v-list-item
@@ -78,157 +78,51 @@
                 </v-list>
               </v-card-text>
             </v-card>
-<v-card>
-    <v-card-title>Генератор уникальной ссылки</v-card-title>
-    <v-card-text>
-      <v-select
-        v-model="selectedTestId"
-        :items="tests"
-        item-title="name"
-        item-value="id"
-        label="Выберите тест"
-        class="mb-4"
-      ></v-select>
-      
-      <v-checkbox
-        v-model="isAnonymous"
-        label="Анонимный доступ"
-        :disabled="!selectedTestAllowsAnonymous"
-      ></v-checkbox>
-      
-      <v-text-field
-        v-model="generatedLink"
-        label="Ваша уникальная ссылка"
-        readonly
-        outlined
-      ></v-text-field>
-      
-      <v-btn 
-        color="primary"
-        @click="generateLink"
-        :disabled="!selectedTestId"
-      >
-        Сгенерировать ссылку
-      </v-btn>
-      
-      <v-btn 
-        color="secondary"
-        @click="copyLink"
-        :disabled="!generatedLink"
-        class="ml-2"
-      >
-        Копировать
-      </v-btn>
-    </v-card-text>
-  </v-card>
-          </v-window-item>
-          <v-window-item value="tariff">
-            <v-card class="mt-4">
-              <v-card-title class="d-flex align-center">
-                <v-icon class="mr-2">mdi-account-star</v-icon>
-                Управление тарифом
-              </v-card-title>
-              
+            <v-card>
+              <v-card-title>Генератор уникальной ссылки</v-card-title>
               <v-card-text>
-                <v-alert
-                  v-if="activeTariff"
-                  :type="tariffAlertType"
+                <v-select
+                  v-model="selectedTestId"
+                  :items="tests"
+                  item-title="name"
+                  item-value="id"
+                  label="Выберите тест"
                   class="mb-4"
+                ></v-select>
+                
+                <v-checkbox
+                  v-model="isAnonymous"
+                  label="Анонимный доступ"
+                  :disabled="!selectedTestAllowsAnonymous"
+                ></v-checkbox>
+                
+                <v-text-field
+                  v-model="generatedLink"
+                  label="Ваша уникальная ссылка"
+                  readonly
+                  outlined
+                ></v-text-field>
+                
+                <v-btn 
+                  color="primary"
+                  @click="generateLink"
+                  :disabled="!selectedTestId"
                 >
-                  <div class="d-flex align-center">
-                    <div>
-                      <strong>Текущий тариф:</strong> {{ tariffName }}<br>
-                      <strong>Срок действия:</strong> до {{ tariffEndDate }}<br>
-                      <strong>Осталось:</strong> {{ daysRemaining }} дней
-                      <span v-if="hasConsultant"> • С консультантом</span>
-                    </div>
-                    <v-spacer></v-spacer>
-                    <v-btn
-                      color="primary"
-                      variant="outlined"
-                      size="small"
-                      @click="showExtendDialog = true"
-                    >
-                      Продлить
-                    </v-btn>
-                  </div>
-                </v-alert>
-
-                <v-alert
-                  v-else
-                  type="warning"
-                  class="mb-4"
+                  Сгенерировать ссылку
+                </v-btn>
+                
+                <v-btn 
+                  color="secondary"
+                  @click="copyLink"
+                  :disabled="!generatedLink"
+                  class="ml-2"
                 >
-                  У вас не активирован ни один тариф. Для доступа ко всем функциям системы выберите подходящий тарифный план:
-                </v-alert>
-
-                <v-row>
-                  <v-col
-                    v-for="tariff in tariffs"
-                    :key="tariff.id"
-                    cols="12"
-                    md="4"
-                  >
-                    <v-card
-                      :border="true"
-                      :variant="selectedTariffId === tariff.id ? 'outlined' : 'elevated'"
-                      :color="selectedTariffId === tariff.id ? 'primary-lighten-5' : ''"
-                      @click="selectedTariffId = tariff.id"
-                      class="h-100"
-                    >
-                      <v-card-title class="d-flex align-center">
-                        <v-icon class="mr-2">{{ tariff.icon }}</v-icon>
-                        {{ tariff.name }}
-                      </v-card-title>
-                      
-                      <v-card-subtitle>
-                        {{ tariff.description }}
-                      </v-card-subtitle>
-                      
-                      <v-card-text>
-                        <v-list density="compact">
-                          <v-list-item
-                            v-for="feature in tariff.features"
-                            :key="feature"
-                          >
-                            <template v-slot:prepend>
-                              <v-icon color="success">mdi-check</v-icon>
-                            </template>
-                            <v-list-item-title>{{ feature }}</v-list-item-title>
-                          </v-list-item>
-                        </v-list>
-                        
-                        <div class="text-center mt-4">
-                          <div class="text-h5">{{ tariff.price }} ₽</div>
-                          <div class="text-caption">за {{ tariff.duration }} дней</div>
-                        </div>
-                      </v-card-text>
-                      
-                      <v-card-actions>
-                        <v-checkbox
-                          v-model="tariff.needConsultant"
-                          label="Консультант (+5000 ₽)"
-                          density="comfortable"
-                          hide-details
-                        ></v-checkbox>
-                        
-                        <v-spacer></v-spacer>
-                        
-                        <v-btn
-                          color="primary"
-                          @click.stop="buyTariff(tariff)"
-                          :loading="loadingTariffId === tariff.id"
-                        >
-                          Выбрать
-                        </v-btn>
-                      </v-card-actions>
-                    </v-card>
-                  </v-col>
-                </v-row>
+                  Копировать
+                </v-btn>
               </v-card-text>
             </v-card>
           </v-window-item>
-
+          
           <v-window-item value="settings">
             <v-card class="mt-4">
               <v-card-title>Настройки профиля</v-card-title>
@@ -280,153 +174,7 @@
             </v-card>
           </v-window-item>
           <v-window-item value="tariff">
-            <v-card class="mt-4">
-              <v-card-title class="d-flex align-center">
-                <v-icon class="mr-2">mdi-account-star</v-icon>
-                Управление тарифом
-              </v-card-title>
-              
-              <v-card-text>
-                <v-alert
-                  v-if="activeTariff"
-                  :type="tariffAlertType"
-                  class="mb-4"
-                >
-                  <div class="d-flex align-center">
-                    <div>
-                      <strong>Текущий тариф:</strong> {{ tariffName }}<br>
-                      <strong>Срок действия:</strong> до {{ tariffEndDate }}<br>
-                      <strong>Осталось:</strong> {{ daysRemaining }} дней
-                      <span v-if="hasConsultant"> • С консультантом</span>
-                    </div>
-                    <v-spacer></v-spacer>
-                    <v-btn
-                      color="primary"
-                      variant="outlined"
-                      size="small"
-                      @click="showExtendDialog = true"
-                    >
-                      Продлить
-                    </v-btn>
-                  </div>
-                </v-alert>
-
-                <v-alert
-                  v-else
-                  type="warning"
-                  class="mb-4"
-                >
-                  У вас не активирован ни один тариф. Для доступа ко всем функциям системы выберите подходящий тарифный план:
-                </v-alert>
-
-                <!-- Блок консультанта -->
-                <v-card class="mb-6" v-if="!hasConsultant">
-                  <v-card-title class="d-flex align-center">
-                    <v-icon color="primary" class="mr-2">mdi-account-tie</v-icon>
-                    Помощь консультанта
-                  </v-card-title>
-                  <v-card-text>
-                    <p class="mb-4">Наши эксперты помогут вам:</p>
-                    <v-list>
-                      <v-list-item
-                        v-for="(benefit, i) in consultantBenefits"
-                        :key="i"
-                        prepend-icon="mdi-check"
-                      >
-                        {{ benefit }}
-                      </v-list-item>
-                    </v-list>
-                    <v-checkbox
-                      v-model="needConsultant"
-                      label="Добавить консультанта (+5000 ₽/мес)"
-                      class="mt-4"
-                    ></v-checkbox>
-                  </v-card-text>
-                </v-card>
-
-                <!-- Тарифные планы -->
-                <v-row>
-                  <v-col
-                    v-for="tariff in tariffs"
-                    :key="tariff.id"
-                    cols="12"
-                    md="4"
-                  >
-                    <v-card
-                      :border="true"
-                      :variant="selectedTariffId === tariff.id ? 'outlined' : 'elevated'"
-                      :color="selectedTariffId === tariff.id ? 'primary-lighten-5' : ''"
-                      @click="selectedTariffId = tariff.id"
-                      class="h-100"
-                    >
-                      <v-card-title class="d-flex align-center">
-                        <v-icon class="mr-2">{{ tariff.icon }}</v-icon>
-                        {{ tariff.name }}
-                      </v-card-title>
-                      
-                      <v-card-subtitle>
-                        {{ tariff.description }}
-                      </v-card-subtitle>
-                      
-                      <v-card-text>
-                        <v-list density="compact">
-                          <v-list-item
-                            v-for="feature in tariff.features"
-                            :key="feature"
-                          >
-                            <template v-slot:prepend>
-                              <v-icon color="success">mdi-check</v-icon>
-                            </template>
-                            <v-list-item-title>{{ feature }}</v-list-item-title>
-                          </v-list-item>
-                        </v-list>
-                        
-                        <div class="text-center mt-4">
-                          <div class="text-h5">{{ tariff.price }} ₽</div>
-                          <div class="text-caption">за {{ tariff.duration }} дней</div>
-                        </div>
-                      </v-card-text>
-                      
-                      <v-card-actions>
-                        <v-btn
-                          color="primary"
-                          @click.stop="buyTariff(tariff)"
-                          :loading="loadingTariffId === tariff.id"
-                          block
-                        >
-                          Выбрать
-                        </v-btn>
-                      </v-card-actions>
-                    </v-card>
-                  </v-col>
-                </v-row>
-
-                <!-- Диалог продления -->
-                <v-dialog v-model="showExtendDialog" max-width="500">
-                  <v-card>
-                    <v-card-title>Продление тарифа</v-card-title>
-                    <v-card-text>
-                      <v-select
-                        v-model="extendPeriod"
-                        :items="extendOptions"
-                        label="Период продления"
-                        class="mb-4"
-                      ></v-select>
-                      
-                      <div class="text-h6 text-center">
-                        Итого к оплате: {{ extendPrice }} ₽
-                      </div>
-                    </v-card-text>
-                    
-                    <v-card-actions>
-                      <v-spacer></v-spacer>
-                      <v-btn color="grey" @click="showExtendDialog = false">Отмена</v-btn>
-                      <v-btn color="primary" @click="extendTariff">Продлить</v-btn>
-                    </v-card-actions>
-                  </v-card>
-                </v-dialog>
-              </v-card-text>
-            </v-card>
+              <Access/>
           </v-window-item>
         </v-window>
       </v-col>
@@ -437,251 +185,214 @@
 <script>
 import api from '@/services/api';
 import CryptoJS from 'crypto-js';
+import Access from './Access.vue';
 
 export default {
+  components: {
+    Access
+  },
   data() {
     return {
       tab: 'tests',
       loading: false,
       tests: [],
       errors: '',
-      user: JSON.parse(localStorage.getItem('user_info')),
+      user: {},
       editUser: {},
       generatedLink: '',
       secretKey: 't1xvuNj9aGC5TJ19P4EY0uiVRlTSXK4t ',
       selectedTestId: null,
-      isAnonymous: false,
-      testsWithAnonymous: [],
-      selectedTariffId: null,
-      showExtendDialog: false,
-      tariffs: [
-        {
-          id: 1,
-          name: 'Базовый',
-          description: 'Доступ к основным тестам',
-          price: 5000,
-          duration: 30,
-          max_users: 10,
-          has_analytics: false,
-          allow_anonymous: false,
-          has_support: false,
-          icon: 'mdi-account'
-        },
-        {
-          id: 2,
-          name: 'Профессиональный',
-          description: 'Расширенная аналитика и отчеты',
-          price: 10000,
-          duration: 30,
-          max_users: 50,
-          has_analytics: true,
-          allow_anonymous: true,
-          has_support: false,
-          icon: 'mdi-account-supervisor'
-        },
-        {
-          id: 3,
-          name: 'Корпоративный',
-          description: 'Полный доступ для всей компании',
-          price: 25000,
-          duration: 30,
-          max_users: 200,
-          has_analytics: true,
-          allow_anonymous: true,
-          has_support: true,
-          icon: 'mdi-account-group'
-        }
-      ],
-      consultantBenefits: [
-        'Помощь в интерпретации результатов',
-        'Персональные рекомендации',
-        'Консультации по развитию сотрудников',
-        'Поддержка по email и телефону'
-      ],
-      needConsultant: false,
-      selectedTariffId: null,
-      loadingTariffId: null,
-      activeTariff: null,
-      showExtendDialog: false,
-      extendPeriod: 30,
-      extendOptions: [
-        { title: '1 месяц', value: 30 },
-        { title: '3 месяца', value: 90 },
-        { title: '6 месяца', value: 180 },
-        { title: '1 год', value: 365 }
-      ]
+      isAnonymous: false
     }
-  },
-  created() {
-    this.editUser = { ...this.user };
-    this.fetchTests();
   },
   computed: {
     userFullName() {
       return `${this.user.last_name || ''} ${this.user.first_name || ''} ${this.user.middle_name || ''}`.trim();
     },
-    
-    hasActiveTariff() {
-      return this.activeTariff && new Date(this.activeTariff.end_date) > new Date();
-    },
-    
-    tariffName() {
-      if (!this.activeTariff) return 'Не активен';
-      return this.activeTariff.tariff?.name || 'Неизвестный тариф';
-    },
-    
-    tariffStatus() {
-      if (!this.activeTariff) return 'Тариф не активирован';
-      return this.hasActiveTariff ? 'Активен' : 'Истек';
-    },
-    
-    tariffColor() {
-      if (!this.activeTariff) return 'grey';
-      return this.hasActiveTariff ? 'green' : 'red';
-    },
-    
-    tariffEndDate() {
-      if (!this.activeTariff) return '';
-      return new Date(this.activeTariff.end_date).toLocaleDateString();
-    },
-    
-    daysRemaining() {
-      if (!this.activeTariff) return 0;
-      const end = new Date(this.activeTariff.end_date);
-      const now = new Date();
-      return Math.max(0, Math.ceil((end - now) / (1000 * 60 * 60 * 24)));
-    },
-    
-    tariffAlertType() {
-      if (!this.activeTariff) return 'warning';
-      if (this.daysRemaining > 7) return 'info';
-      if (this.daysRemaining > 3) return 'warning';
-      return 'error';
-    },
-    
-    hasConsultant() {
-      return this.activeTariff?.has_consultant;
-    },
-    
-    extendPrice() {
-      if (!this.activeTariff) return 0;
-      const basePrice = this.activeTariff.tariff.price;
-      const consultantFee = this.hasConsultant ? 5000 : 0;
-      return Math.round((basePrice * this.extendPeriod / 30) + consultantFee);
-    },
     selectedTestAllowsAnonymous() {
-      if (!this.selectedTestId) return false;
       const test = this.tests.find(t => t.id === this.selectedTestId);
-      return test ? test.allow_anonymous : false;
+      return test?.allow_anonymous || false;
     }
   },
+  async created() {
+    // Проверяем аутентификацию
+    if (!this.isAuthenticated()) {
+      this.$router.push('/login');
+      return;
+    }
+    
+    this.loadUserData();
+    this.editUser = { ...this.user };
+    
+    await this.fetchTests();
+  },
   methods: {
-    async loadData() {
+    isAuthenticated() {
+      return !!localStorage.getItem('token');
+    },
+    
+    loadUserData() {
       try {
-        const [tariffsRes, testsRes, activeTariffRes] = await Promise.all([
-          api.get('/tariffs'),
-          api.get('/tests'),
-          api.get('/user/tariff/active')
-        ]);
-        
-        this.tariffs = tariffsRes.data.map(t => ({
-          ...t,
-          icon: this.getTariffIcon(t.id),
-          needConsultant: false,
-          features: [
-            `До ${t.max_users} пользователей`,
-            t.has_analytics && 'Расширенная аналитика',
-            t.allow_anonymous && 'Анонимный доступ',
-            t.has_support && 'Приоритетная поддержка'
-          ].filter(Boolean)
-        }));
-        
-        this.availableTests = testsRes.data;
-        this.activeTariff = activeTariffRes.data;
-        
-        if (this.activeTariff && this.hasActiveTariff) {
-          this.tab = 'tests';
+        const userData = localStorage.getItem('user_info');
+        if (userData) {
+          this.user = JSON.parse(userData);
+        } else {
+          console.warn('Данные пользователя не найдены в localStorage');
+          this.user = {};
         }
-      } catch (error) {
-        console.error('Ошибка загрузки данных:', error);
+      } catch (e) {
+        console.error('Ошибка чтения данных пользователя:', e);
+        this.user = {};
       }
     },
     
-    getTariffIcon(tariffId) {
-      const icons = {
-        1: 'mdi-account',
-        2: 'mdi-account-supervisor',
-        3: 'mdi-account-group'
-      };
-      return icons[tariffId] || 'mdi-account';
-    },
-
     async fetchTests() {
       try {
         this.loading = true;
         const response = await api.get('/get_tests');
-        this.tests = response.data;
+        
+        // Проверяем наличие данных
+        if (response.data && Array.isArray(response.data)) {
+          this.tests = response.data;
+        } else {
+          this.tests = [];
+        }
       } catch (error) {
-        this.errors = error;
+        this.handleApiError(error, 'Ошибка загрузки тестов');
       } finally {
         this.loading = false;
       }
     },
+    
+    handleApiError(error, defaultMessage) {
+      console.error(defaultMessage, error);
+      
+      if (error.isAuthError) {
+        this.showAuthError();
+      } else {
+        this.errors = error.response?.data?.message || 
+                     defaultMessage;
+      }
+    },
+    
+    showAuthError() {
+      this.$toast.error('Сессия истекла. Пожалуйста, войдите снова');
+      setTimeout(() => {
+        this.$router.push('/login');
+      }, 3000);
+    },
+    
     goToTestResults(testId) {
       this.$router.push(`/test_results/${testId}`);
     },
+    
     async saveProfile() {
-      Object.assign(this.user, this.editUser);
       try {
-        this.updateLocalStorageUserData(this.editUser);
-        const response = await api.put('/update_user', this.editUser);
+        // Обновляем только необходимые поля
+        Object.assign(this.user, {
+          last_name: this.editUser.last_name,
+          first_name: this.editUser.first_name,
+          middle_name: this.editUser.middle_name,
+          email: this.editUser.email,
+          phone: this.editUser.phone
+        });
+        
+        // Отправляем только необходимые данные
+        const updateData = {
+          id: this.user.id,
+          last_name: this.editUser.last_name,
+          first_name: this.editUser.first_name,
+          middle_name: this.editUser.middle_name,
+          email: this.editUser.email,
+          phone: this.editUser.phone
+        };
+        
+        await api.put('/update_user', updateData);
+        
+        // Обновляем хранилище после успешного обновления
+        this.updateLocalStorageUserData();
+        
+        this.showToast('Изменения сохранены!', 'success');
       } catch (error) {
-        console.error(error);
+        this.handleSaveError(error);
       }
-      alert('Изменения сохранены!');
     },
-    updateLocalStorageUserData(newData) {
-      const ls_data = JSON.parse(localStorage.getItem('user_info'));
-      ls_data.first_name = this.editUser.first_name;
-      ls_data.last_name = this.editUser.last_name;
-      ls_data.middle_name = this.editUser.middle_name;
-      ls_data.email = this.editUser.email;
-      ls_data.phone = this.editUser.phone;
-      localStorage.setItem('user_info', JSON.stringify(ls_data));
-    },
-    generateLink() {
-      if (!this.selectedTestId) return;
+    
+    handleSaveError(error) {
+      console.error('Save error:', error);
+      const errorMsg = error.response?.data?.error || 
+                      'Ошибка сохранения данных';
       
-      // Если выбран анонимный доступ, но тест его не поддерживает
-      if (this.isAnonymous && !this.selectedTestAllowsAnonymous) {
-        this.isAnonymous = false; // Сбрасываем анонимность
+      this.showToast(errorMsg, 'error');
+    },
+    
+    updateLocalStorageUserData() {
+      try {
+        localStorage.setItem('user_info', JSON.stringify(this.user));
+      } catch (e) {
+        console.error('Ошибка записи в localStorage:', e);
+        this.showToast('Ошибка сохранения данных', 'error');
+      }
+    },
+    
+    generateLink() {
+      if (!this.selectedTestId) {
+        this.showToast('Выберите тест', 'error');
+        return;
+      }
+      
+      // Проверяем наличие company_id
+      if (!this.user.company_id) {
+        this.showToast('Не найден идентификатор компании', 'error');
+        console.error('Company ID is missing');
+        return;
       }
       
       const dataToEncrypt = {
         testId: this.selectedTestId,
         companyId: this.user.company_id,
-        isAnonymous: this.isAnonymous && this.selectedTestAllowsAnonymous, // Двойная проверка
+        isAnonymous: this.isAnonymous && this.selectedTestAllowsAnonymous,
         timestamp: Date.now()
       };
       
-      const encryptedData = CryptoJS.AES.encrypt(
-        JSON.stringify(dataToEncrypt),
-        this.secretKey
-      ).toString();
-      
-      this.generatedLink = `${window.location.origin}/test-access/${encodeURIComponent(encryptedData)}`;
+      try {
+        const encryptedData = CryptoJS.AES.encrypt(
+          JSON.stringify(dataToEncrypt),
+          this.secretKey
+        ).toString();
+        
+        this.generatedLink = `${window.location.origin}/test-access/${encodeURIComponent(encryptedData)}`;
+      } catch (e) {
+        console.error('Ошибка шифрования данных:', e);
+        this.showToast('Ошибка генерации ссылки', 'error');
+      }
     },
+    
     copyLink() {
       if (!this.generatedLink) return;
       
-      // Копирование в буфер обмена
       navigator.clipboard.writeText(this.generatedLink)
         .then(() => {
-          alert('Ссылка скопирована в буфер обмена!');
+          this.showToast('Ссылка скопирована!', 'success');
         })
         .catch(err => {
-          console.error('Ошибка копирования: ', err);
+          console.error('Ошибка копирования:', err);
+          this.showToast('Не удалось скопировать ссылку', 'error');
         });
+    },
+    
+    showToast(message, type = 'info') {
+      if (this.$toast) {
+        if (type === 'error') {
+          this.$toast.error(message);
+        } else if (type === 'success') {
+          this.$toast.success(message);
+        } else {
+          this.$toast.info(message);
+        }
+      } else {
+        console.log(`${type.toUpperCase()}: ${message}`);
+      }
     }
   }
 }
@@ -692,11 +403,5 @@ export default {
   background-color: #f5f5f5;
   border-radius: 50%;
   padding: 10px;
-}
-.h-100 {
-  height: 100%;
-}
-.primary-lighten-5 {
-  background-color: rgba(var(--v-theme-primary), 0.05);
 }
 </style>

@@ -222,12 +222,71 @@ export default {
         this.loading = false
       }
     },
+    
     async handleLogin() {
       try {
         const response = await api.post('/login', {
           email: this.form.email,
           password: this.form.password
-        })
+        });
+
+        // Проверяем структуру ответа
+        if (response.data && response.data.token && response.data.user) {
+          localStorage.setItem('token', response.data.token);
+          localStorage.setItem('user_info', JSON.stringify(response.data.user));
+          
+          console.log('Аутентификация успешна. Токен сохранен:', response.data.token);
+          
+          const authStore = useAuthStore();
+          authStore.setAuth(response.data.token);
+
+          await this.$router.push('/profile');
+        } else {
+          throw new Error('Неверный формат ответа сервера');
+        }
+      } catch (error) {
+        console.error('Login error:', error)
+        
+        // Анализируем ошибку
+        if (error.response) {
+          // Ошибка от сервера (4xx, 5xx)
+          if (error.response.status === 401) {
+            this.errorMessage = 'Неверный email или пароль'
+          } else {
+            this.errorMessage = error.response.data?.error || 'Ошибка авторизации'
+          }
+        } else if (error.request) {
+          // Запрос был сделан, но ответ не получен
+          this.errorMessage = 'Сервер не отвечает'
+        } else {
+          // Ошибка настройки запроса
+          this.errorMessage = error.message || 'Ошибка при отправке запроса'
+        }
+      }
+    },
+    
+    async handleRegistration() {
+      try {
+        // Очищаем телефон от маски
+        const cleanPhone = this.form.phone.replace(/\D/g, '')
+        
+        // Формируем данные для регистрации
+        const registrationData = {
+          email: this.form.email,
+          password: this.form.password,
+          first_name: this.form.first_name,
+          last_name: this.form.last_name,
+          middle_name: this.form.middle_name,
+          company: this.form.company,
+          phone: cleanPhone
+        }
+
+        const response = await api.post('/register', registrationData)
+
+        // Проверяем структуру ответа
+        if (!response.data || !response.data.token || !response.data.user) {
+          throw new Error('Неверный формат ответа сервера')
+        }
 
         localStorage.setItem('token', response.data.token)
         localStorage.setItem('user_info', JSON.stringify(response.data.user))
@@ -237,47 +296,32 @@ export default {
 
         await this.$router.push('/profile')
       } catch (error) {
-        console.error(error)
-      } 
-    },
-    async handleRegistration() {
-      try {
-        this.loading = true;
-        this.errorMessage = '';
-      
-        const userData = {
-          first_name: this.form.first_name,
-          last_name: this.form.last_name,
-          middle_name: this.form.middle_name,
-          email: this.form.email,
-          password: this.form.password,
-          company: this.form.company,
-          phone: this.form.phone // Добавлен телефон в данные для отправки
-        };
-      
-        const response = await api.post('/register', userData);
-
-        if (!response.data?.token) {
-          throw new Error('Не получили токен от сервера');
+        console.error('Registration error:', error)
+        
+        // Анализируем ошибку
+        if (error.response) {
+          // Ошибка от сервера
+          if (error.response.status === 409) {
+            this.errorMessage = 'Пользователь с таким email уже существует'
+          } else if (error.response.status === 400) {
+            // Обработка ошибок валидации
+            if (error.response.data?.missing) {
+              this.errorMessage = `Не заполнены обязательные поля: ${error.response.data.missing.join(', ')}`
+            } else {
+              this.errorMessage = error.response.data?.error || 'Ошибка в данных'
+            }
+          } else {
+            this.errorMessage = error.response.data?.error || 'Ошибка регистрации'
+          }
+        } else if (error.request) {
+          this.errorMessage = 'Сервер не отвечает'
+        } else {
+          this.errorMessage = error.message || 'Ошибка при отправке запроса'
         }
-      
-        console.log('Регистрация успешна:', response.data);
-      
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user_info', JSON.stringify(response.data.user));
-      
-        const authStore = useAuthStore()
-        authStore.setAuth(response.data.token)
-
-        await this.$router.push('/profile');
-      } catch (error) {
-        console.error(error)
       }
     },
+    
     handleError(error) {
-      console.error('Auth error:', error)
-      this.errorMessage = error.message || 'Произошла ошибка'
-      
       // Автоматически очищаем ошибку через 5 секунд
       setTimeout(() => {
         this.errorMessage = ''
