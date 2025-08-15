@@ -1,11 +1,30 @@
 <template>
   <v-container>
+    <!-- Таймер для теста с ID=3 -->
+    <v-alert 
+      v-if="testId == 3 && timer > 0"
+      :color="timerColor"
+      dark
+      prominent
+      class="mb-4"
+    >
+      <v-row align="center">
+        <v-col cols="auto">
+          <v-icon large>mdi-clock-outline</v-icon>
+        </v-col>
+        <v-col>
+          <div class="text-h6">Оставшееся время:</div>
+          <div class="text-h4">{{ formattedTime }}</div>
+        </v-col>
+      </v-row>
+    </v-alert>
+
     <v-form @submit.prevent="submitAnswers">
       <v-btn 
         color="primary" 
         class="ml-2"
         @click="startAutoAnswer"
-        :disabled="isAutoAnswering"
+        :disabled="isAutoAnswering || isTimerExpired"
       >
         {{ isAutoAnswering ? 'Автоответчик работает...' : 'Автоматически ответить' }}
       </v-btn>
@@ -36,6 +55,7 @@
                 handle=".handle"
                 item-key="id"
                 @end="updatePriorities"
+                :disabled="isTimerExpired"
               >
                 <template #item="{element, index}">
                   <v-card
@@ -48,6 +68,7 @@
                     <v-btn
                       icon
                       @click="removeAnswer(question.id, element)"
+                      :disabled="isTimerExpired"
                     >
                       <v-icon color="error">mdi-close</v-icon>
                     </v-btn>
@@ -62,7 +83,7 @@
                 :item-title="(item) => item.text"
                 item-value="id"
                 :outlined=true
-                :disabled="selectedAnswers[question.id].answerIds.length >= 3"
+                :disabled="selectedAnswers[question.id].answerIds.length >= 3 || isTimerExpired"
                 @update:model-value="addAnswer(question.id)"
               >
             
@@ -74,13 +95,22 @@
               v-else
               v-model="selectedAnswers[question.id].answerId"
               @update:model-value="updatePoints(question)"
+              :disabled="isTimerExpired"
             >
               <v-radio
                 v-for="answer in question.answers"
                 :key="answer.id"
-                :label="`${answer.id}: ${answer.answer} (${answer.points})`"
                 :value="answer.id"
-              ></v-radio>
+              >
+                <template v-slot:label>
+                  <span v-if="answer.answer_char">
+                    <strong>{{ answer.answer_char }}.</strong> {{ answer.answer }}
+                  </span>
+                  <span v-else>
+                    {{ answer.answer }}
+                  </span>
+                </template>
+              </v-radio>
             </v-radio-group>
           </div>
         </v-card>
@@ -89,7 +119,7 @@
       <v-btn 
         color="success" 
         type="submit"
-        :disabled="isAutoAnswering || loading"
+        :disabled="isAutoAnswering || loading || isTimerExpired"
         :loading="loading"
       >
         Отправить
@@ -122,9 +152,28 @@ export default {
       testId: null
     })
     const answerDelay = ref(100)
+    
+    // Таймерные переменные
+    const timer = ref(60) // 30 минут в секундах (1800)
+    const timerInterval = ref(null)
+    const isTimerExpired = ref(false)
 
     const testId = computed(() => {
       return route.params.test_data || testData.value.testId
+    })
+
+    // Форматирование времени для отображения
+    const formattedTime = computed(() => {
+      const minutes = Math.floor(timer.value / 60)
+      const seconds = timer.value % 60
+      return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+    })
+
+    // Цвет таймера в зависимости от оставшегося времени
+    const timerColor = computed(() => {
+      if (timer.value > 300) return 'green' // Более 5 минут - зеленый
+      if (timer.value > 60) return 'orange' // Менее 5 минут - оранжевый
+      return 'red' // Менее 1 минуты - красный
     })
 
     const getImageUrl = (imagePath) => {
@@ -169,6 +218,31 @@ export default {
       }
     }
 
+    // Запуск таймера для теста с ID=3
+    const startTimer = () => {
+      if (timerInterval.value) {
+        clearInterval(timerInterval.value)
+      }
+      
+      timerInterval.value = setInterval(() => {
+        if (timer.value > 0) {
+          timer.value--
+        } else if (!isTimerExpired.value) {
+          isTimerExpired.value = true
+          clearInterval(timerInterval.value)
+          submitAnswers()
+        }
+      }, 1000)
+    }
+
+    // Остановка таймера
+    const stopTimer = () => {
+      if (timerInterval.value) {
+        clearInterval(timerInterval.value)
+        timerInterval.value = null
+      }
+    }
+
     const fetchQuestions = async () => {
       try {
         loading.value = true
@@ -183,6 +257,11 @@ export default {
         })
         
         selectedAnswers.value = {...selectedAnswers.value}
+        
+        // Запускаем таймер после загрузки вопросов для теста с ID=3
+        if (testId.value == 3) {
+          startTimer()
+        }
         
       } catch (error) {
         console.error("Ошибка при загрузке вопросов:", error)
@@ -249,25 +328,41 @@ export default {
     
 
     const submitAnswers = async () => {
+      // Останавливаем таймер при отправке ответов
+      stopTimer()
+      
       try {
         loading.value = true
         
         let hasErrors = false
         
-        if (isSingleQuestion.value) {
-          const question = questions.value[0]
-          if (selectedAnswers.value[question.id]?.answerIds?.length > 3) {
-            alert('Можно выбрать не более 3 ответов!')
-            hasErrors = true
+        // Для теста с ID=3 пропускаем проверку незаполненных вопросов
+        if (testId.value == 3) {
+          // Проверяем только ограничение по количеству ответов для одного вопроса
+          if (isSingleQuestion.value) {
+            const question = questions.value[0]
+            if (selectedAnswers.value[question.id]?.answerIds?.length > 3) {
+              alert('Можно выбрать не более 3 ответов!')
+              hasErrors = true
+            }
           }
         } else {
-          const unansweredQuestions = questions.value.filter(
-            q => !selectedAnswers.value[q.id]?.answerId
-          )
-          
-          if (unansweredQuestions.length > 0) {
-            alert('Пожалуйста, ответьте на все вопросы!')
-            hasErrors = true
+          // Стандартная проверка для других тестов
+          if (isSingleQuestion.value) {
+            const question = questions.value[0]
+            if (selectedAnswers.value[question.id]?.answerIds?.length > 3) {
+              alert('Можно выбрать не более 3 ответов!')
+              hasErrors = true
+            }
+          } else {
+            const unansweredQuestions = questions.value.filter(
+              q => !selectedAnswers.value[q.id]?.answerId
+            )
+            
+            if (unansweredQuestions.length > 0) {
+              alert('Пожалуйста, ответьте на все вопросы!')
+              hasErrors = true
+            }
           }
         }
         
@@ -289,11 +384,18 @@ export default {
             }
           })
         } else {
-          answersData.answers = questions.value.map(question => ({
-            question_id: question.id,
-            answer_id: selectedAnswers.value[question.id].answerId,
-            points: selectedAnswers.value[question.id].points
-          }))
+          // Для теста с ID=3 отправляем только отвеченные вопросы
+          answersData.answers = questions.value
+            .filter(question => 
+              testId.value == 3 
+                ? selectedAnswers.value[question.id]?.answerId != null 
+                : true
+            )
+            .map(question => ({
+              question_id: question.id,
+              answer_id: selectedAnswers.value[question.id].answerId,
+              points: selectedAnswers.value[question.id].points
+            }))
         }
 
         if (!testData.value.isAnonymous && userData.value) {
@@ -302,7 +404,6 @@ export default {
           answersData.user_data = route.query
         }
         await api.post('/save_answers', answersData)
-        //alert('Ответы успешно отправлены!')
         window.location.href = `/end_test`;
       } catch (error) {
         console.error("Ошибка при отправке ответов:", error)
@@ -351,6 +452,7 @@ export default {
 
     onBeforeUnmount(() => {
       stopAutoAnswer()
+      stopTimer()
     })
 
     return {
@@ -368,7 +470,12 @@ export default {
       addAnswer,
       removeAnswer,
       updatePoints,
-      getImageUrl
+      getImageUrl,
+      // Таймерные свойства
+      timer,
+      formattedTime,
+      timerColor,
+      isTimerExpired
     }
   },
 }
