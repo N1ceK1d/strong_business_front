@@ -30,13 +30,12 @@ const drawer = ref(false);
 
 const navItems = [
   { title: 'Профиль', icon: 'mdi-home', link: '/profile' },
-  { title: 'О нас', icon: 'mdi-information', link: '/info' },
   { title: 'Выйти', icon: 'mdi-logout', link: '#' } // link можно оставить как # или удалить
 ];
 
 const logout = () => {
   authStore.logout();
-  router.push('/login');
+  router.push('/authorization');
   drawer.value = false; // Закрываем меню после выхода
 };
 </script>
