@@ -29,13 +29,14 @@ const router = useRouter();
 const drawer = ref(false);
 
 const navItems = [
-  { title: 'Профиль', icon: 'mdi-home', link: '/profile' },
-  { title: 'Выйти', icon: 'mdi-logout', link: '#' } // link можно оставить как # или удалить
+  { title: 'Профиль', icon: 'mdi-account', link: '/profile' },
+  { title: 'Главная', icon: 'mdi-home', link: '/home'},
+  { title: 'Выйти', icon: 'mdi-logout', link: '#' }
 ];
 
 const logout = () => {
   authStore.logout();
   router.push('/authorization');
-  drawer.value = false; // Закрываем меню после выхода
+  drawer.value = false; 
 };
 </script>

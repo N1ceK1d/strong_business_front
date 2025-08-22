@@ -6,15 +6,16 @@ import Test from '@/components/Test.vue'
 import TestAccess from '@/components/TestAccess.vue'
 import TestResults from '@/components/TestResults.vue'
 import EndTest from '@/components/EndTest.vue'
+import Home from '@/components/Home.vue'
 
 const routes = [
   {
-    path: '/',
+    path: '/home',
     name: 'Home',
-    component: () => import('@/components/Home.vue'),
+    component: Home,
     meta: { 
       requiresAuth: false,
-      showHeaderFooter: false, }
+      showHeaderFooter: true, }
   },
   {
     path: '/profile',

@@ -243,10 +243,10 @@ export default {
     totalPrice() {
       let total = 0;
       if (this.selectedAccess.candidates && this.selectedTariff.candidates) {
-        total += this.selectedTariff.candidates.price;
+        total += +this.selectedTariff.candidates.price;
       }
       if (this.selectedAccess.analytics && this.selectedTariff.analytics) {
-        total += this.selectedTariff.analytics.price;
+        total += +this.selectedTariff.analytics.price;
       }
       return total;
     },
@@ -289,21 +289,37 @@ export default {
     },
     
     async loadTariffs() {
-      try {
-        const response = await api.get('/tariffs');
+  try {
+    const response = await api.get('/tariffs');
+    
+    // Проверяем наличие данных
+    if (response.data && Array.isArray(response.data)) {
+      // Загружаем активные тарифы пользователя
+      const activeTariffsResponse = await api.get('/client/tariffs');
+      const activeTariffIds = activeTariffsResponse.data?.map(t => t.tariff_id) || [];
+      
+      // Помечаем уже приобретенные тарифы
+      this.candidateTariffs = response.data
+        .filter(t => t.access_type === 'candidates')
+        .map(tariff => ({
+          ...tariff,
+          isPurchased: activeTariffIds.includes(tariff.id)
+        }));
         
-        // Проверяем наличие данных
-        if (response.data && Array.isArray(response.data)) {
-          this.candidateTariffs = response.data.filter(t => t.access_type === 'candidates');
-          this.analyticsTariffs = response.data.filter(t => t.access_type === 'analytics');
-        } else {
-          this.candidateTariffs = [];
-          this.analyticsTariffs = [];
-        }
-      } catch (error) {
-        this.handleApiError(error, 'Ошибка загрузки тарифов');
-      }
-    },
+      this.analyticsTariffs = response.data
+        .filter(t => t.access_type === 'analytics')
+        .map(tariff => ({
+          ...tariff,
+          isPurchased: activeTariffIds.includes(tariff.id)
+        }));
+    } else {
+      this.candidateTariffs = [];
+      this.analyticsTariffs = [];
+    }
+  } catch (error) {
+    this.handleApiError(error, 'Ошибка загрузки тарифов');
+  }
+},
     
     handleApiError(error, defaultMessage) {
       console.error(defaultMessage, error);
