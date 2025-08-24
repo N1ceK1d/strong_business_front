@@ -40,11 +40,7 @@
                 </v-chip>
                 {{ user.fullname }} 
                 
-                
-                <label v-if="user.fullname != 'Аноним' && user.post_position != ''">
-                  ({{ user.post_position }})
-                </label>
-                <label v-else-if="user.fullname != 'Аноним' && user.post_position == ''">
+                <label v-if="user.fullname != 'Аноним' && user.post_position == ''">
                   (Руководитель)
                 </label>
                 <v-spacer />
@@ -88,7 +84,6 @@
         <h2 class="pdf-title">Результаты тестирования</h2>
         <div class="pdf-user-info">
           <p><strong>ФИО:</strong> {{ user.fullname }}</p>
-          <p v-if="user.post_position != '' && user.fullname != 'Аноним'"><strong>Должность:</strong> {{ user.post_position }}</p>
           <p v-if="user.gender != null"><strong>Пол:</strong> {{ user.gender === true ? 'Мужской' : 'Женский' }}</p>
           <p v-if="user.post_position == '' && user.fullname != 'Аноним'"><strong>Статус:</strong> Руководитель</p>
         </div>

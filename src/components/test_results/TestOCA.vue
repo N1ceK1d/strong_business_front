@@ -632,6 +632,7 @@ export default {
     getPercentile(gender, paramName, score) {
       const category = this.getCategoryFromName(paramName)
       const genderData = gender ? result_value.man : result_value.woman
+      console.log(genderData)
       const categoryData = genderData[category]
       if (!categoryData) return 0
       

@@ -35,16 +35,6 @@
               </v-col>
             </v-row>
 
-            <!-- Поле "Должность" скрывается при isDirector = true -->
-            <v-text-field
-              v-if="!userForm.isDirector"
-              v-model="userForm.position"
-              label="Должность"
-              :rules="positionRules"
-              required
-              class="mb-4"
-            ></v-text-field>
-
             <v-radio-group
               v-model="userForm.gender"
               label="Пол"
@@ -102,7 +92,7 @@ export default {
         lastName: '',
         firstName: '',
         middleName: '',
-        position: '',
+        position: '-',
         gender: null,
         isDirector: false,
         company_id: null
@@ -110,10 +100,6 @@ export default {
       requiredRules: [
         v => !!v || 'Обязательное поле'
       ],
-      // Правила для должности (требуется только если не руководитель)
-      positionRules: [
-        v => (!this.userForm.isDirector && !!v) || 'Обязательное поле'
-      ]
     }
   },
   computed: {
@@ -166,10 +152,6 @@ export default {
         this.userForm.gender
       ];
       
-      // Должность обязательна только если не руководитель
-      if (!this.userForm.isDirector) {
-        requiredFields.push(this.userForm.position);
-      }
       
       return requiredFields.every(field => !!field);
     },

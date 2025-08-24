@@ -94,23 +94,23 @@ export default {
       
       headers: [
         { 
-          text: 'Пользователь', 
+          title: 'Пользователь', 
           value: 'user_fullname', 
           width: '25%' 
         },
         { 
-          text: 'Уровень', 
+          title: 'Уровень', 
           value: 'level', 
           width: '15%', 
           align: 'center' 
         },
         { 
-          text: 'Описание состояния', 
+          title: 'Описание состояния', 
           value: 'description', 
           width: '45%' 
         },
         { 
-          text: 'Действия', 
+          title: 'Действия', 
           value: 'actions', 
           width: '15%',
           sortable: false,
