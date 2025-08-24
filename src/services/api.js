@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 const api = axios.create({
-  //baseURL: process.env.VUE_APP_API_URL || 'http://localhost:3005/api',
-  baseURL: "https://n1cek1d-strong-busienss-api-d0ee.twc1.net/api"
+  baseURL: process.env.VUE_APP_API_URL || 'http://localhost:3005/api',
+  //baseURL: "https://n1cek1d-strong-busienss-api-d0ee.twc1.net/api"
   // baseURL: "https://n1cek1d-strong-busienss-api-d0ee.twc1.net/api"
 });
 

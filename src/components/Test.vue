@@ -154,7 +154,7 @@ export default {
     const answerDelay = ref(100)
     
     // Таймерные переменные
-    const timer = ref(60) // 30 минут в секундах (1800)
+    const timer = ref(120) // 30 минут в секундах (1800)
     const timerInterval = ref(null)
     const isTimerExpired = ref(false)
 
